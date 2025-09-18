@@ -2,64 +2,21 @@
 *      CHESS GAME ENGINE     *
 *      AUTHOR: alviny        *
 *****************************/
-use std::{fmt, iter::Enumerate};
 
-//#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Game {
-    fen: String,
-    board: Board,
-}
-impl Game {
-    pub fn new() -> Game {
-        Game {
-            fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1".to_string(),
-            board: parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
-        }
-    }
-    pub fn state_based_action_check() {
-        // Chess SBAs: 
-        // When 2 pieces share a coordinate, the piece of NAP is removed from the game.
-        // When the AP has no legal moves and is in check, NAP wins the game.
-        // When the AP has no legal moves and is not in check, the game is a draw.
-    }
-    //pub fn 
-}
-impl fmt::Debug for Game {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "")
-    }
-}
-pub struct Board {
-    board_state: Vec<Vec<char>>, 
-    // Represents the board. Pieces are represented by their FEN notation (capital for white, lowercase for black)
-    // Blank squares are represented by "-"
-    active_player: char, // "W" or "B"
-    castling_availability: String, // TODO: change this to String
-    //This value is the power set of string "KQkq" and 
-    // represents which castling moves are available. 
-    // Castling not implemented yet.
+// This library uses algebraic notation. Read more here: 
+// https://en.wikipedia.org/wiki/Algebraic_notation_(chess)#Naming_the_pieces
 
-    en_passant_square: String, 
-    // This value represents whether or not en passant is available, 
-    // and if so, the square to which the capturing pawn will move. Otherwise, 
-    // the value will be "-".
-    // En passant not implemented yet.
+// This library uses FEN notation. Read more here:
+// https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation
 
-    halfmove_counter: u8,
-    // This counter increments for every move made without a capture
-    // or a pawn move. Otherwise, it resets. 
-    // When it reaches 100, the game is a draw.
-    turn_counter: u64,
-    // This counter increments by one every time Black makes a move.
-}
-impl Board{
-    
-}
-impl fmt::Debug for Board {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self.board_state)
-    }
-}
+use std::{fmt::{self, format}, iter::Enumerate};
+
+
+/*****************************
+*       HELPER FUNCTIONS     *
+*       BEGIN HERE           *
+*****************************/
+
 fn parse_fen(fen: &str) -> Board {
     let fen_vec = fen
         .split(' ')
@@ -76,9 +33,9 @@ fn parse_fen(fen: &str) -> Board {
             //assuming valid FEN (only characters and numbers)
             const RADIX: u32 = 10;
             if character.is_numeric() {
-                for i in 0..character
+                for _i in 0..character
                     .to_digit(RADIX)
-                    .unwrap() {
+                    .expect("Could not convert char to int") {
                         row.push('*');
                     }
             } else {
@@ -96,36 +53,189 @@ fn parse_fen(fen: &str) -> Board {
         castling_availability: fen_vec[2].to_string(),
         en_passant_square: fen_vec[3].to_string(),
         halfmove_counter: fen_vec[4]
-            .parse::<u8>()
-            .expect("not possible to convert to u8"),
+            .parse::<i32>()
+            .expect("not possible to convert to i32"),
         turn_counter: fen_vec[5]
             .parse::<u64>()
             .expect("not possible to convert to u64"),
     }
     //Then feed the rest directly into the cosntructor
 
+} // Creates a Board struct from any given FEN. Inverse function to generate_fen()
+
+fn generate_fen(board: Board) -> String {
+    let mut fen = String::new();
+    let mut fen_row = String::new();
+    let mut empty_squares: i32 = 0;
+    for row in board.board_state {
+        for char in row {
+            if char == '*' {
+                empty_squares += 1;
+            } else {
+                if empty_squares > 0 {
+                    fen_row = format!("{}{}{}", fen_row, empty_squares, char);
+                    empty_squares = 0;
+                } else {
+                    fen_row = format!("{}{}", fen_row, char);
+                }
+            }
+        }
+        if empty_squares > 0 {
+            fen_row = format!("{}{}", fen_row, empty_squares);
+            empty_squares = 0;
+        } // In case the last few squares are empty, add them
+        if fen.is_empty() {
+            fen = fen_row;
+        } else {
+            fen = format!("{}/{}", fen, fen_row);
+        }
+    }
+    return format!(
+        "{} {} {} {} {} {}", 
+        fen, 
+        board.active_player, 
+        board.castling_availability, 
+        board.en_passant_square, 
+        board.halfmove_counter, 
+        board.turn_counter
+    );
+} // Creates a FEN from any given Board struct. Inverse function for parse_fen().
+
+fn get_board_coords (algebraic_notation: String) -> Vec<i32> {
+    let row_names = "hgfedcba".to_string();
+    let row_number_index = row_names.chars().position(
+        |x| 
+            x == algebraic_notation
+                .chars()
+                .nth(0)
+                .unwrap()
+    ).expect("Unable to find row number");
+    let row_number = i32::try_from(row_number_index).expect("Row number index too large");
+    let col_number = algebraic_notation
+                .chars()
+                .nth(1)
+                .unwrap()
+                as i32;
+    return vec![row_number, col_number - 1]
+} // Generates Board.game_state coords from algebraic notation. [0~7, 0~7]. [0, 0] corresponds to h1, and [8, 8] is a8. 
+
+fn get_piece(board: Board, coords: Vec<i32>) -> char {
+    return board.board_state[coords[0] as usize][coords[1] as usize]
+} // Returns the piece on a given coordinate on the board.
+fn set_piece(mut board: Board, coords: Vec<i32>, piece: char) -> Board {
+    board.board_state[coords[0] as usize][coords[1] as usize] = piece;
+    return board
+} // changes the given board coordinate to the given piece. 
+
+fn move_piece(board: Board, source: String, target: String) -> Board { //Function assumes valid algebraic notation and valid move
+    let source_coords = get_board_coords(source);
+    let target_coords = get_board_coords(target);
+    let mut increment_half_move_counter = false;
+    let piece = get_piece(board, source_coords);
+    if get_piece(board, target_coords) != '*' { // target square isn't empty => Capture
+        board = set_piece(board, target_coords, get_piece(board, target_coords));
+        increment_half_move_counter = true;
+    } else {
+
+    }
+    board
+} // Moves a piece to a target square, and updates necessary counters on the board
+
+
+/*****************************
+*       PUBLIC STRUCTS       *
+*       BEGIN HERE           *
+*****************************/
+#[derive(Copy, Clone, Debug, PartialEq)] // I have no idea how to implement these traits (except for Debug), need to ask for / find walkthrough
+
+pub struct Game {
+    fen: String,
+    board: Board,
+    check_w: bool,
+    check_b: bool,
+}
+impl Game {
+    pub fn new() -> Game {
+        Game {
+            fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1".to_string(),
+            board: parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
+            check_w: false,
+            check_b: false,
+        }
+    }
+    pub fn get_available_moves(square: String) {
+        todo!();
+    }
+    pub fn make_move(&mut self, source: String, target: String) { //Assuming both square and target are algebraic notation strings with length 2
+        let available_moves = get_available_moves(source);
+        if available_moves.contains(target) {
+            self.board = move_piece(self.board, source, target);
+            self.fen = generate_fen(self.board);
+        }
+    }
+}
+impl Default for Game {
+    fn default() -> Self {
+    Self::new()
+    }
+}
+impl fmt::Debug for Game {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Current FEN: {} \n Current board state: {:?}", self.fen, self.board)
+    }
+}
+pub struct Board {
+    board_state: Vec<Vec<char>>, 
+    // Represents the board. Pieces are represented by their FEN notation (capital for white, lowercase for black)
+    // Blank squares are represented by "-"
+    active_player: char, // "w" or "b"
+    castling_availability: String,
+    //This value is in the power set of string "KQkq" and 
+    // represents which castling moves are available. 
+    // Castling not implemented yet.
+
+    en_passant_square: String, 
+    // This value represents whether or not en passant is available, 
+    // and if so, the square to which the capturing pawn will move. Otherwise, 
+    // the value will be "-".
+    // En passant not implemented yet.
+
+    halfmove_counter: i32,
+    // This counter increments for every move made without a capture
+    // or a pawn move. Otherwise, it resets. 
+    // When it reaches 100, the game is a draw.
+    turn_counter: u64,
+    // This counter increments by one every time Black makes a move.
+}
+impl Board{
+    
+}
+impl fmt::Debug for Board {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut output = "Current board (top left corner is a1)".to_string();
+        for i in &self.board_state {
+            output = format!("{} \n {:?}", output, i);
+        } // beautify the printed Vector
+        write!(f, "{}", output)
+    }
 }
 
 
+/*****************************
+*         UNIT TESTS         *
+*         BEGIN HERE         *
+*****************************/
 
-
-
-
-
-
-
-
-
-
-/* Unit test example
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+    fn test_board_representation() {
+        let starting_position = Game::new();
+        println!("{:?}", starting_position);
+        for i in starting_position.board.board_state {
+            assert_eq!(i.len(), 8); // assert that length of each row = 8
+        }
     }
 }
-*/
