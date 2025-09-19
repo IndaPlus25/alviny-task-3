@@ -149,7 +149,10 @@ fn move_piece(mut board: Board, source: String, target: String) -> Board { //Fun
 
 fn get_piece_movements(coords: Vec<i32>, piece: &char) -> Vec<Vec<i32>> {
     todo!()
-}
+} //For a given piece on a given coordinate, return a Vec of coordinates that this piece can move to.
+
+
+
 /*****************************
 *       PUBLIC STRUCTS       *
 *       BEGIN HERE           *
