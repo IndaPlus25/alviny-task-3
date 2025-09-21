@@ -148,9 +148,10 @@ fn move_piece(mut board: Board, source: Vec<i32>, target: Vec<i32>) -> Board {
     }
 
 
+    //TODO: Actually move the piece
+    //TODO: Add the rest of the counters
 
 
-    
     board
 } // Moves a piece to a target square, and updates necessary counters on the board
 
@@ -276,10 +277,9 @@ fn player_is_in_check(board: Board, player: char) -> bool {
     todo!() // Check if any opposing piece threatens the king, if yes, return true, else return false
 } // Returns true if the current active player is in check
 
-/*****************************
-*  ENUMS                     *
-*  BEGIN HERE                *
-*****************************/
+fn is_chcekmate_or_stalemate(board: Board) -> bool {
+    todo!() // if is_in_check(board.active_player) && 
+}
 
 /*****************************
 *  PUBLIC STRUCTS            *
@@ -289,15 +289,15 @@ fn player_is_in_check(board: Board, player: char) -> bool {
 #[derive(Clone, PartialEq)] // I have no idea how to implement these traits (except for Debug), need to ask for / find walkthrough
 pub struct Game {
     fen: String,
-    board: Board, /*
-                  check_w: bool,
-                  check_b: bool,
-                  */
+    board: Board, 
+    check_w: bool,
+    check_b: bool,
 }
 impl Game {
     pub fn new_from_fen(fen: String) -> Game {
         let board = parse_fen(&fen);
-        Game { fen, board }
+        Game { fen, board, check_w: false, check_b: false }
+        //TODO: implement check_for_checks
     }
     pub fn new() -> Game {
         Self::new_from_fen(
@@ -311,21 +311,25 @@ impl Game {
         let mut output = HashMap::new();
         for (y_pos, row) in board.board_state.iter().enumerate() {
             for (x_pos, piece) in row.iter().enumerate() {
-                if active_color == 'w' {
-                    if piece.is_ascii_uppercase() {
-                        // WHITE pieces are represented by uppercase letters
+                if active_color == 'w' && 
+                    piece.is_ascii_uppercase() {
+                        // WHITE pieces are represented by UPPERCASE letters
                         let coords: Vec<i32> =
                             vec![i32::try_from(x_pos).unwrap(), i32::try_from(y_pos).unwrap()];
                         let movements = get_piece_movements(&board, &coords, &piece);
-                        output.insert(coords, movements);
-                    }
+                        if !movements.is_empty() {
+                            output.insert(coords, movements);
+                        }
+                    
                 } else if active_color == 'b' &&
                     piece.is_ascii_lowercase() {
                         // black pieces are represented by lowercase letters
                         let coords: Vec<i32> =
                             vec![i32::try_from(x_pos).unwrap(), i32::try_from(y_pos).unwrap()];
                         let movements = get_piece_movements(&board, &coords, &piece);
-                        output.insert(coords, movements);
+                        if !movements.is_empty() {
+                            output.insert(coords, movements);
+                        }
                     
                 }
             }
