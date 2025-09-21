@@ -86,7 +86,7 @@ fn generate_fen(board: Board) -> String {
             empty_squares = 0;
         } // In case the last few squares are empty, add them
         if fen.is_empty() {
-            fen = fen_row;
+            fen = fen_row.clone();
         } else {
             fen = format!("{}/{}", fen, fen_row);
         }
@@ -111,7 +111,9 @@ fn get_board_coords (algebraic_notation: String) -> Vec<i32> {
                 .nth(0)
                 .unwrap()
     ).expect("Unable to find row number");
+
     let row_number = i32::try_from(row_number_index).expect("Row number index too large");
+
     let col_number = algebraic_notation
                 .chars()
                 .nth(1)
@@ -124,7 +126,7 @@ fn get_algebaric_notation (coords: Vec<i32>) {
     let row_names = "hgfedcba".to_string();
 }
 
-fn get_piece(board: Board, coords: &Vec<i32>) -> char {
+fn get_piece(board: &Board, coords: &Vec<i32>) -> char {
     return board.board_state[coords[0] as usize][coords[1] as usize]
 } // Returns the piece on a given coordinate on the board.
 
@@ -136,20 +138,41 @@ fn set_piece(mut board: Board, coords: &Vec<i32>, piece: char) -> Board {
 fn move_piece(mut board: Board, source: String, target: String) -> Board { //Function assumes valid algebraic notation and valid move
     let source_coords = get_board_coords(source);
     let target_coords = get_board_coords(target);
-    let mut increment_half_move_counter = true;
-    let piece = get_piece(board, &source_coords);  // target square isn't empty => Capture 
-    if get_piece(board.clone(), &target_coords) != '*' 
+    let mut increment_halfmove_counter = true;
+    let piece = get_piece(&board, &source_coords);  // target square isn't empty => Capture 
+    if get_piece(&board, &target_coords) != '*' 
     || // OR
     piece.to_lowercase().to_string() == 'p'.to_string() { // the piece moved is a pawn
-        increment_half_move_counter = false;
+        increment_halfmove_counter = false;
     }
-
+    if increment_halfmove_counter {
+        board.halfmove_counter += 1
+    }
     board
 } // Moves a piece to a target square, and updates necessary counters on the board
 
 fn get_piece_movements(coords: Vec<i32>, piece: &char) -> Vec<Vec<i32>> {
-    todo!()
+    let mut move_list = vec![];
+    let x_pos = coords[0];
+    let y_pos = coords [1];
+    match piece.to_ascii_lowercase() {
+        'p' => todo!(), // The pawn moves straight forward (y+1) if it's not a capture, moves diagonally ([x+1, y+1], [x+1, y-1]) if it's a capture, 
+        'b' => todo!(), // The bishop moves along diagonals [+x, +y], [-x, +y], [-x, -y] and [+x, -y], until it hits a piece.
+        'n' => todo!(), // the knight teleports to specific relative coordinates [x+-2, y+-1], [x+-1, y+-2]
+
+        'r' => { // The rook moves in rows and cols [+-x], [+-y], until it hits a piece. 
+
+        },
+        'q' => todo!(), // the queen moves in rows and cols [+-x], [+-y], and along diagonals [+x, +y], [-x, +y], [-x, -y] and [+x, -y], until it hits a piece.
+        'k' => todo!(), // the king teleports to surrounding squares. [x+-1, y+-1].
+        '*' => vec![], // the empty square can't move.
+        _ => panic!("Non-filled square on board"),
+    }
 } //For a given piece on a given coordinate, return a Vec of coordinates that this piece can move to.
+
+fn active_player_is_in_check(board: Board) -> bool {
+    todo!()
+} // Returns true if the current active player is in check
 
 
 
@@ -166,7 +189,7 @@ pub enum Pieces {
     Queen,
     King,
 }
-#[derive(Copy, Clone, PartialEq)] // I have no idea how to implement these traits (except for Debug), need to ask for / find walkthrough
+#[derive(Clone, PartialEq)] // I have no idea how to implement these traits (except for Debug), need to ask for / find walkthrough
 pub struct Game {
     fen: String,
     board: Board,/*
@@ -179,8 +202,6 @@ impl Game {
         Game {
             fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1".to_string(),
             board: parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
-            check_w: false,
-            check_b: false,
         }
     }
     pub fn get_available_moves(board: Board, active_color: char) -> HashMap<Vec<i32>, Vec<Vec<i32>>>{
@@ -190,12 +211,14 @@ impl Game {
                 if active_color == 'w' {
                     if piece.is_ascii_uppercase() { // WHITE pieces are represented by uppercase letters
                         let coords: Vec<i32> = vec![i32::try_from(x_pos).unwrap(), i32::try_from(y_pos).unwrap()];
-                        let movements = get_piece_movements(coords, &piece);
-                        output.insert(coords, movements);
+                        let movements = get_piece_movements(&coords, &piece);
+                        output.insert(&coords, movements);
                     }
                 } else if active_color == 'b' {
                     if piece.is_ascii_lowercase() { // black pieces are represented by lowercase letters
-                        
+                        let coords: Vec<i32> = vec![i32::try_from(x_pos).unwrap(), i32::try_from(y_pos).unwrap()];
+                        let movements = get_piece_movements(&coords, &piece);
+                        output.insert(&coords, movements);
                     }
 
                 }
@@ -205,7 +228,7 @@ impl Game {
     } // For any given color, finds pieces of that color. Returns a 
     //Hashmap of coords with pieces of that color, and available moves for each coordinate. 
     
-    pub fn make_move(&mut self, source: String, target: String) { //Assuming both square and target are algebraic notation strings with length 2
+    pub fn make_move(&mut self, source: <Vec<i32>>, target: <Vec<i32>>) { //Assuming both square and target are Board coordinates <Vec<i32>> with length 2
         let available_moves = Self::get_available_moves(self.board, self.board.active_player);
         if available_moves.contains_key(&source) {
             self.board = move_piece(self.board, source, target);
@@ -223,7 +246,7 @@ impl fmt::Debug for Game {
         write!(f, "Current FEN: {} \n Current board state: {:?}", self.fen, self.board)
     }
 }
-#[derive(/*Copy,*/ Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct Board {
     board_state: Vec<Vec<char>>, 
     // Represents the board. Pieces are represented by their FEN notation (capital for white, lowercase for black)
