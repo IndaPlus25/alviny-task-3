@@ -156,7 +156,12 @@ fn move_piece(mut board: Board, source: Vec<i32>, target: Vec<i32>) -> Board {
     board
 } // Moves a piece to a target square, and updates necessary counters on the board
 
-
+fn is_enemy_piece(active_player: char, piece: char) -> bool {
+    (active_player == 'w' && piece.is_ascii_lowercase()) || (active_player == 'b' && piece.is_ascii_uppercase())
+}
+fn is_friendly_piece(active_player: char, piece: char) -> bool {
+    (active_player == 'w' && piece.is_ascii_uppercase()) || (active_player == 'b' && piece.is_ascii_lowercase())
+}
 //REMEMBER! x_pos = col number, y_pos = row number !!!!!!!!!!!!!!!!
 fn get_piece_movements(board: &Board, coords: &Vec<i32>, piece: &char) -> Vec<Vec<i32>> {
     let mut move_list = vec![];
@@ -262,10 +267,44 @@ fn get_piece_movements(board: &Board, coords: &Vec<i32>, piece: &char) -> Vec<Ve
             } // checks in -y, +x for available moves
             move_list
         }, // The bishop moves along diagonals [+x, +y], [-x, +y], [-x, -y] and [+x, -y], until it hits a piece.
-        'n' => vec![], // TODO the knight teleports to specific relative coordinates [x+-2, y+-1], [x+-1, y+-2]
+        'n' => {
+            if is_enemy_piece(board.active_player, board.board_state[(y_pos+2) as usize][(x_pos+1) as usize]) ||
+            (board.board_state[(y_pos+2) as usize][(x_pos+1) as usize] == '*')  {
+                move_list.push(vec![y_pos+2, x_pos+1]);
+            }
+            if is_enemy_piece(board.active_player, board.board_state[(y_pos+2) as usize][(x_pos-1) as usize]) ||
+            (board.board_state[(y_pos+2) as usize][(x_pos-1) as usize] == '*'){
+                move_list.push(vec![y_pos+2, x_pos-1]);
+            }
+            if is_enemy_piece(board.active_player, board.board_state[(y_pos-2) as usize][(x_pos+1) as usize]) ||
+            (board.board_state[(y_pos-2) as usize][(x_pos+1) as usize] == '*'){
+                move_list.push(vec![y_pos-2, x_pos+1]);
+            }
+            if is_enemy_piece(board.active_player, board.board_state[(y_pos-2) as usize][(x_pos-1) as usize]) ||
+            (board.board_state[(y_pos-2) as usize][(x_pos-1) as usize] == '*'){
+                move_list.push(vec![y_pos-2, x_pos-1]);
+            }
+            if is_enemy_piece(board.active_player, board.board_state[(y_pos+1) as usize][(x_pos+2) as usize]) ||
+            (board.board_state[(y_pos+1) as usize][(x_pos+2) as usize] == '*'){
+                move_list.push(vec![y_pos+1, x_pos+2]);
+            }
+            if is_enemy_piece(board.active_player, board.board_state[(y_pos-1) as usize][(x_pos+2) as usize]) ||
+            (board.board_state[(y_pos-1) as usize][(x_pos+2) as usize] == '*'){
+                move_list.push(vec![y_pos-1, x_pos+2]);
+            }
+            if is_enemy_piece(board.active_player, board.board_state[(y_pos+1) as usize][(x_pos-2) as usize]) ||
+            (board.board_state[(y_pos+1) as usize][(x_pos-2) as usize] == '*'){
+                move_list.push(vec![y_pos+1, x_pos-2]);
+            }
+            if is_enemy_piece(board.active_player, board.board_state[(y_pos-1) as usize][(x_pos-2) as usize]) ||
+            (board.board_state[(y_pos-1) as usize][(x_pos-2) as usize] == '*'){
+                move_list.push(vec![y_pos-1, x_pos-2]);
+            }
+            move_list
+        }, // TODO the knight teleports to specific relative coordinates [x+-2, y+-1], [x+-1, y+-2]
 
         'r' => {
-            // The rook moves in rows and cols [+-y], [+-x], until it hits a piece.
+            
             '_loop: for new_x in { 0..x_pos }.rev() {
                 println!("x coord: {}, y coord: {}, content: {}", new_x, y_pos, board.board_state[y_pos as usize][new_x as usize]);
                 if (board.active_player == 'w' && // breaks at friendly pieces before adding the associated coordinate to the piece's move list
@@ -374,7 +413,7 @@ fn get_piece_movements(board: &Board, coords: &Vec<i32>, piece: &char) -> Vec<Ve
             } // checks for available moves in +y until we hit a friendly piece (exclusive) or until we hit an enemy piece (inclusive)
 
             move_list
-        }
+        } // The rook moves in rows and cols [+-y], [+-x], until it hits a piece.
         'q' => {
             for i in get_piece_movements(board, coords, &'b') {
                 move_list.push(i);
@@ -383,8 +422,7 @@ fn get_piece_movements(board: &Board, coords: &Vec<i32>, piece: &char) -> Vec<Ve
                 move_list.push(i);
             }
         move_list
-        }, // TODO the queen moves in rows and cols [+-x], [+-y], and along diagonals [+x, +y], [-x, +y], [-x, -y] and [+x, -y], until it hits a piece.
-        // TODO: Once you're finished with Bishop and Rook movement, this should be trivial. Recursive calling of get_piece_movements('b', 'r')
+        }, //the queen moows and cols [+-x], [+-y], and along diagonals [+x, +y], [-x, +y], [-x, -y] and [+x, -y], until it hits a piece.
         'k' => vec![], // TODO the king teleports to surrounding squares. [x+-1, y+-1].
         '*' => vec![],  // the empty square can't move.
         _ => panic!("By God! A non-filled square on board! PANIC!"),
@@ -551,6 +589,13 @@ mod tests {
     #[test]
     fn test_queen_moves() {
         let test_position = Game::new_from_fen("p7/5p2/3P4/1P1Q3P/4p3/1p6/3P4/8 w - - 0 1".to_string());
+        println!("{:?}", test_position);
+        println!("{:?}", Game::get_available_moves(test_position.board.clone(), test_position.board.active_player));
+        assert_eq!(true, true)
+    }
+    #[test]
+    fn test_knight_moves() {
+        let test_position = Game::new_from_fen("8/8/8/8/4N3/8/8/8 w - - 0 1".to_string());
         println!("{:?}", test_position);
         println!("{:?}", Game::get_available_moves(test_position.board.clone(), test_position.board.active_player));
         assert_eq!(true, true)
