@@ -106,8 +106,8 @@ fn get_board_coords(algebraic_notation: String) -> Vec<i32> {
     let col_number = i32::try_from(col_number_index).expect("Row number index too large");
 
     let row_number = algebraic_notation.chars().nth(1).unwrap() as i32;
-    vec![row_number, 8 - col_number]
-} // Generates Board.game_state coords from algebraic notation. [0~7, 0~7]. [0, 0] corresponds to h1, and [8, 8] is a8. 
+    vec![8 - col_number, row_number]
+} // Generates Board.game_state coords from algebraic notation. [0~7, 0~7]. [0, 0] corresponds to a8, and [7,7] is h1. [3,4] is e5. 
 
 fn get_algebaric_notation(coords: Vec<i32>) -> String {
     let col_names = "abcdefgh".to_string();
@@ -156,213 +156,228 @@ fn move_piece(mut board: Board, source: Vec<i32>, target: Vec<i32>) -> Board {
     board
 } // Moves a piece to a target square, and updates necessary counters on the board
 
+
+//REMEMBER! x_pos = col number, y_pos = row number !!!!!!!!!!!!!!!!
 fn get_piece_movements(board: &Board, coords: &Vec<i32>, piece: &char) -> Vec<Vec<i32>> {
     let mut move_list = vec![];
     let x_pos = coords[0];
     let y_pos = coords[1];
+    println!("Matching piece movements: {}", piece.to_ascii_lowercase());
+            println!("{:?}", board);
     match piece.to_ascii_lowercase() {
-        'p' => todo!(), // The pawn moves straight forward (y+1) if it's not a capture, moves diagonally ([x+1, y+1], [x+1, y-1]) if it's a capture,
+        'p' => vec![], // TODO The pawn moves straight forward (y+1) if it's not a capture, moves diagonally ([x+1, y+1], [x+1, y-1]) if it's a capture,
         'b' => {
             for coordinate_modifier in 1..min(8-x_pos, 8-y_pos) { //Iterates until the x or y coordinate reaches 7, whichever happens first
                 if board.active_player == 'w' && // breaks at friendly pieces before adding the associated coordinate to the piece's move list
-                board.board_state[(x_pos + coordinate_modifier) as usize][(y_pos + coordinate_modifier) as usize].is_ascii_uppercase() {
+                board.board_state[(y_pos + coordinate_modifier) as usize][(x_pos + coordinate_modifier) as usize].is_ascii_uppercase() {
                     break;
                 } else if board.active_player == 'b'
-                    && board.board_state[(x_pos + coordinate_modifier) as usize][(y_pos + coordinate_modifier) as usize].is_ascii_lowercase()
+                    && board.board_state[(y_pos + coordinate_modifier) as usize][(x_pos + coordinate_modifier) as usize].is_ascii_lowercase()
                 {
                     break;
                 }
 
-                move_list.push(vec![x_pos + coordinate_modifier, y_pos + coordinate_modifier]);
+                move_list.push(vec![y_pos + coordinate_modifier, x_pos + coordinate_modifier]);
 
                 if board.active_player == 'w' && // breaks at enemy pieces after adding the associated coordinate to the piece's move list
-                board.board_state[(x_pos + coordinate_modifier) as usize][(y_pos + coordinate_modifier) as usize].is_ascii_lowercase()
+                board.board_state[(y_pos + coordinate_modifier) as usize][(x_pos + coordinate_modifier) as usize].is_ascii_lowercase()
                 {
                     break;
                 } else if board.active_player == 'b'
-                    && board.board_state[(x_pos + coordinate_modifier) as usize][(y_pos + coordinate_modifier) as usize].is_ascii_uppercase()
+                    && board.board_state[(y_pos + coordinate_modifier) as usize][(x_pos + coordinate_modifier) as usize].is_ascii_uppercase()
                 {
                     break;
                 }
 
-            } // Checks in (+x, +y) for available moves
+            } // Checks in +y, +x for available moves
 
-            for coordinate_modifier in 1..min(8-x_pos, y_pos+1) {
+            for coordinate_modifier in 1..min(8-y_pos, x_pos+1) {
                                 if board.active_player == 'w' && // breaks at friendly pieces before adding the associated coordinate to the piece's move list
-                board.board_state[(x_pos + coordinate_modifier) as usize][(y_pos - coordinate_modifier) as usize].is_ascii_uppercase() {
+                board.board_state[(y_pos + coordinate_modifier) as usize][(x_pos - coordinate_modifier) as usize].is_ascii_uppercase() {
                     break;
                 } else if board.active_player == 'b'
-                    && board.board_state[(x_pos + coordinate_modifier) as usize][(y_pos - coordinate_modifier) as usize].is_ascii_lowercase()
+                    && board.board_state[(y_pos + coordinate_modifier) as usize][(x_pos - coordinate_modifier) as usize].is_ascii_lowercase()
                 {
                     break;
                 }
 
-                move_list.push(vec![x_pos + coordinate_modifier, y_pos - coordinate_modifier]);
+                move_list.push(vec![y_pos + coordinate_modifier, x_pos - coordinate_modifier]);
 
                 if board.active_player == 'w' && // breaks at enemy pieces after adding the associated coordinate to the piece's move list
-                board.board_state[(x_pos + coordinate_modifier) as usize][(y_pos - coordinate_modifier) as usize].is_ascii_lowercase()
+                board.board_state[(y_pos + coordinate_modifier) as usize][(x_pos - coordinate_modifier) as usize].is_ascii_lowercase()
                 {
                     break;
                 } else if board.active_player == 'b'
-                    && board.board_state[(x_pos + coordinate_modifier) as usize][(y_pos - coordinate_modifier) as usize].is_ascii_uppercase()
+                    && board.board_state[(y_pos + coordinate_modifier) as usize][(x_pos - coordinate_modifier) as usize].is_ascii_uppercase()
                 {
                     break;
                 }
-            } // checks in +x, -y for available moves
+            } // checks in +y, -x for available moves
 
             for coordinate_modifier in 1..min(x_pos+1, y_pos+1) {
                 
                 if board.active_player == 'w' && // breaks at friendly pieces before adding the associated coordinate to the piece's move list
-                board.board_state[(x_pos - coordinate_modifier) as usize][(y_pos - coordinate_modifier) as usize].is_ascii_uppercase() {
+                board.board_state[(y_pos - coordinate_modifier) as usize][(x_pos - coordinate_modifier) as usize].is_ascii_uppercase() {
                     break;
                 } else if board.active_player == 'b'
-                    && board.board_state[(x_pos - coordinate_modifier) as usize][(y_pos - coordinate_modifier) as usize].is_ascii_lowercase()
+                    && board.board_state[(y_pos - coordinate_modifier) as usize][(x_pos - coordinate_modifier) as usize].is_ascii_lowercase()
                 {
                     break;
                 }
 
-                move_list.push(vec![x_pos - coordinate_modifier, y_pos - coordinate_modifier]);
+                move_list.push(vec![y_pos - coordinate_modifier, x_pos - coordinate_modifier]);
 
                 if board.active_player == 'w' && // breaks at enemy pieces after adding the associated coordinate to the piece's move list
-                board.board_state[(x_pos - coordinate_modifier) as usize][(y_pos - coordinate_modifier) as usize].is_ascii_lowercase()
+                board.board_state[(y_pos - coordinate_modifier) as usize][(x_pos - coordinate_modifier) as usize].is_ascii_lowercase()
                 {
                     break;
                 } else if board.active_player == 'b'
-                    && board.board_state[(x_pos - coordinate_modifier) as usize][(y_pos - coordinate_modifier) as usize].is_ascii_uppercase()
+                    && board.board_state[(y_pos - coordinate_modifier) as usize][(x_pos - coordinate_modifier) as usize].is_ascii_uppercase()
                 {
                     break;
                 }
-            } // checks in -x, -y for available moves
-            for coordinate_modifier in 1..min(x_pos+1, y_pos+1) {
+            } // checks in -y, -x for available moves
+            for coordinate_modifier in 1..min(y_pos+1, 8-x_pos) {
                 
                 if board.active_player == 'w' && // breaks at friendly pieces before adding the associated coordinate to the piece's move list
-                board.board_state[(x_pos - coordinate_modifier) as usize][(y_pos + coordinate_modifier) as usize].is_ascii_uppercase() {
+                board.board_state[(y_pos - coordinate_modifier) as usize][(x_pos + coordinate_modifier) as usize].is_ascii_uppercase() {
                     break;
                 } else if board.active_player == 'b'
-                    && board.board_state[(x_pos - coordinate_modifier) as usize][(y_pos + coordinate_modifier) as usize].is_ascii_lowercase()
+                    && board.board_state[(y_pos - coordinate_modifier) as usize][(x_pos + coordinate_modifier) as usize].is_ascii_lowercase()
                 {
                     break;
                 }
 
-                move_list.push(vec![x_pos - coordinate_modifier, y_pos + coordinate_modifier]);
+                move_list.push(vec![y_pos - coordinate_modifier, x_pos + coordinate_modifier]);
 
                 if board.active_player == 'w' && // breaks at enemy pieces after adding the associated coordinate to the piece's move list
-                board.board_state[(x_pos - coordinate_modifier) as usize][(y_pos + coordinate_modifier) as usize].is_ascii_lowercase()
+                board.board_state[(y_pos - coordinate_modifier) as usize][(x_pos + coordinate_modifier) as usize].is_ascii_lowercase()
                 {
                     break;
                 } else if board.active_player == 'b'
-                    && board.board_state[(x_pos - coordinate_modifier) as usize][(y_pos + coordinate_modifier) as usize].is_ascii_uppercase()
+                    && board.board_state[(y_pos - coordinate_modifier) as usize][(x_pos + coordinate_modifier) as usize].is_ascii_uppercase()
                 {
                     break;
                 }
-            } // checks in -x, +y for available moves
+            } // checks in -y, +x for available moves
             move_list
         }, // The bishop moves along diagonals [+x, +y], [-x, +y], [-x, -y] and [+x, -y], until it hits a piece.
-        'n' => todo!(), // the knight teleports to specific relative coordinates [x+-2, y+-1], [x+-1, y+-2]
+        'n' => vec![], // TODO the knight teleports to specific relative coordinates [x+-2, y+-1], [x+-1, y+-2]
 
         'r' => {
-            // The rook moves in rows and cols [+-x], [+-y], until it hits a piece.
-            for new_x in { 0..x_pos }.rev() {
-                if board.active_player == 'w' && // breaks at friendly pieces before adding the associated coordinate to the piece's move list
-                board.board_state[new_x as usize][y_pos as usize].is_ascii_uppercase()
+            // The rook moves in rows and cols [+-y], [+-x], until it hits a piece.
+            '_loop: for new_x in { 0..x_pos }.rev() {
+                println!("x coord: {}, y coord: {}, content: {}", new_x, y_pos, board.board_state[y_pos as usize][new_x as usize]);
+                if (board.active_player == 'w' && // breaks at friendly pieces before adding the associated coordinate to the piece's move list
+                board.board_state[y_pos as usize][new_x as usize].is_ascii_uppercase())
+                || (board.active_player == 'b'
+                    && board.board_state[y_pos as usize][new_x as usize].is_ascii_lowercase()) 
                 {
-                    break;
-                } else if board.active_player == 'b'
-                    && board.board_state[new_x as usize][y_pos as usize].is_ascii_lowercase()
-                {
-                    break;
+                    println!("Loop break detected: collision with friendly piece at -x");
+                    break '_loop;
                 }
 
-                move_list.push(vec![new_x, y_pos]); // adds the current coordinate to the move list
+                move_list.push(vec![y_pos, new_x]); // adds the current coordinate to the move list
 
-                if board.active_player == 'w' && // breaks at enemy pieces after adding the associated coordinate to the piece's move list
-                board.board_state[new_x as usize][y_pos as usize].is_ascii_lowercase()
+                if (board.active_player == 'w' && // breaks at enemy pieces after adding the associated coordinate to the piece's move list
+                board.board_state[y_pos as usize][new_x as usize].is_ascii_lowercase())
+                    || ( board.active_player == 'b'
+                    && board.board_state[y_pos as usize][new_x as usize].is_ascii_uppercase())
                 {
-                    break;
-                } else if board.active_player == 'b'
-                    && board.board_state[new_x as usize][y_pos as usize].is_ascii_uppercase()
-                {
-                    break;
+                    println!("Loop break detected: collision with enemy piece at -x");
+                    break '_loop;
                 }
             } // checks for available moves in -x until we hit a friendly piece (exclusive) or until we hit an enemy piece (inclusive)
 
-            for new_x in x_pos + 1..8 {
-                if board.active_player == 'w' && // breaks at friendly pieces before adding the associated coordinate to the piece's move list
-                board.board_state[new_x as usize][y_pos as usize].is_ascii_uppercase()
+             '_loop: for new_x in (x_pos + 1)..8 {
+                println!("x coord: {}, y coord: {}, content: {}", new_x, y_pos, board.board_state[y_pos as usize][new_x as usize]);
+                if (board.active_player == 'w' && // breaks at friendly pieces before adding the associated coordinate to the piece's move list
+                board.board_state[y_pos as usize][new_x as usize].is_ascii_uppercase())
+                || (board.active_player == 'b'
+                    && board.board_state[y_pos as usize][new_x as usize].is_ascii_lowercase())
                 {
-                    break;
-                } else if board.active_player == 'b'
-                    && board.board_state[new_x as usize][y_pos as usize].is_ascii_lowercase()
-                {
-                    break;
+                    println!("Loop break detected: collision with friendly piece at +x");
+                    break '_loop;
                 }
 
-                move_list.push(vec![new_x, y_pos]); // adds the current coordinate to the move list
+                move_list.push(vec![y_pos, new_x]); // adds the current coordinate to the move list
 
                 if board.active_player == 'w' && // breaks at enemy pieces after adding the associated coordinate to the piece's move list
-                board.board_state[new_x as usize][y_pos as usize].is_ascii_lowercase()
+                board.board_state[y_pos as usize][new_x as usize].is_ascii_lowercase()
                 {
-                    break;
+                    println!("Loop break detected: collision with enemy piece at +x");
+                    break '_loop;
                 } else if board.active_player == 'b'
-                    && board.board_state[new_x as usize][y_pos as usize].is_ascii_uppercase()
+                    && board.board_state[y_pos as usize][new_x as usize].is_ascii_uppercase()
                 {
-                    break;
+                    println!("Loop break detected: collision with enemy piece at +x");
+                    break '_loop;
                 }
             } // checks for available moves in +x until we hit a friendly piece (exclusive) or until we hit an enemy piece (inclusive)
 
-            for new_y in { 0..y_pos }.rev() {
+             '_loop: for new_y in { 0..y_pos }.rev() {
+                println!("x coord: {}, y coord: {}, content: {}", x_pos, new_y, board.board_state[new_y as usize][x_pos as usize]);
                 if board.active_player == 'w' && // breaks at friendly pieces before adding the associated coordinate to the piece's move list
-                board.board_state[x_pos as usize][new_y as usize].is_ascii_uppercase()
+                board.board_state[new_y as usize][x_pos as usize].is_ascii_uppercase()
                 {
-                    break;
+                    println!("Loop break detected: collision with friendly piece at -y");
+                    break '_loop;
                 } else if board.active_player == 'b'
-                    && board.board_state[x_pos as usize][new_y as usize].is_ascii_lowercase()
+                    && board.board_state[new_y as usize][x_pos as usize].is_ascii_lowercase()
                 {
-                    break;
+                    println!("Loop break detected: collision with friendly piece at -y");
+                    break '_loop;
                 }
 
-                move_list.push(vec![x_pos, new_y]); // adds the current coordinate to the move list (doesn't proc if the loop is broken in the block before)
+                move_list.push(vec![new_y, x_pos]); // adds the current coordinate to the move list (doesn't proc if the loop is broken in the block before)
 
                 if board.active_player == 'w' && // breaks at enemy pieces after adding the associated coordinate to the piece's move list
-                board.board_state[x_pos as usize][new_y as usize].is_ascii_lowercase()
+                board.board_state[new_y as usize][x_pos as usize].is_ascii_lowercase()
                 {
-                    break;
+                    println!("Loop break detected: collision with enemy piece at -y");
+                    break '_loop;
                 } else if board.active_player == 'b'
-                    && board.board_state[x_pos as usize][new_y as usize].is_ascii_uppercase()
+                    && board.board_state[new_y as usize][x_pos as usize].is_ascii_uppercase()
                 {
-                    break;
+                    println!("Loop break detected: collision with enemy piece at -y");
+                    break '_loop;
                 }
             } // checks for available moves in -y until we hit a friendly piece (exclusive) or until we hit an enemy piece (inclusive)
 
-            for new_y in y_pos + 1..8 {
+             '_loop: for new_y in (y_pos + 1)..8 {
+                println!("x coord: {}, y coord: {}, content: {}", x_pos, new_y, board.board_state[new_y as usize][x_pos as usize]);
                 if board.active_player == 'w' && // breaks at friendly pieces before adding the associated coordinate to the piece's move list
-                board.board_state[x_pos as usize][new_y as usize].is_ascii_uppercase()
+                board.board_state[new_y as usize][x_pos as usize].is_ascii_uppercase()
                 {
-                    break;
+                    println!("Loop break detected: collision with friendly piece at +y");
+                    break  '_loop;
                 } else if board.active_player == 'b'
-                    && board.board_state[x_pos as usize][new_y as usize].is_ascii_lowercase()
+                    && board.board_state[new_y as usize][x_pos as usize].is_ascii_lowercase()
                 {
-                    break;
+                    println!("Loop break detected: collision with friendly piece at +y");
+                    break '_loop;
                 }
 
-                move_list.push(vec![x_pos, new_y]); // adds the current coordinate to the move list (doesn't proc if the loop is broken in the block before)
+                move_list.push(vec![new_y, x_pos]); // adds the current coordinate to the move list (doesn't proc if the loop is broken in the block before)
 
                 if board.active_player == 'w' && // breaks at enemy pieces after adding the associated coordinate to the piece's move list
-                board.board_state[x_pos as usize][new_y as usize].is_ascii_lowercase()
+                board.board_state[new_y as usize][x_pos as usize].is_ascii_lowercase()
                 {
-                    break;
+                    println!("Loop break detected: collision with enemy piece at +y");
+                    break  '_loop;
                 } else if board.active_player == 'b'
-                    && board.board_state[x_pos as usize][new_y as usize].is_ascii_uppercase()
+                    && board.board_state[new_y as usize][x_pos as usize].is_ascii_uppercase()
                 {
-                    break;
+                    println!("Loop break detected: collision with enemy piece at +y");
+                    break '_loop;
                 }
             } // checks for available moves in +y until we hit a friendly piece (exclusive) or until we hit an enemy piece (inclusive)
 
             move_list
         }
-        'q' => todo!(), // the queen moves in rows and cols [+-x], [+-y], and along diagonals [+x, +y], [-x, +y], [-x, -y] and [+x, -y], until it hits a piece.
+        'q' => vec![], // TODO the queen moves in rows and cols [+-x], [+-y], and along diagonals [+x, +y], [-x, +y], [-x, -y] and [+x, -y], until it hits a piece.
         // TODO: Once you're finished with Bishop and Rook movement, this should be trivial. Recursive calling of get_piece_movements('b', 'r')
-        'k' => todo!(), // the king teleports to surrounding squares. [x+-1, y+-1].
+        'k' => vec![], // TODO the king teleports to surrounding squares. [x+-1, y+-1].
         '*' => vec![],  // the empty square can't move.
         _ => panic!("By God! A non-filled square on board! PANIC!"),
     }
@@ -444,7 +459,7 @@ impl Game {
                 self.board = move_piece(self.board.clone(), source, target);
                 self.fen = generate_fen(self.board.clone());
         }
-    } // Make move if move is available for the active player, then switch active player, then check for checks
+    } // TODO Make move if move is available for the active player, then switch active player, then check for checks
 }
 impl Default for Game {
     fn default() -> Self {
@@ -489,6 +504,7 @@ impl fmt::Debug for Board {
         for i in &self.board_state {
             output = format!("{} \n {:?}", output, i);
         } // beautify the printed Vector
+        output = format!("{} \n Active Player: {}, \n Castling Availability: {}, \n En Passant availability: {}, \n Halfmove counter: {}, \n Turn count: {}", output, self.active_player, self.castling_availability, self.en_passant_square, self.halfmove_counter, self.turn_counter);
         write!(f, "{}", output)
     }
 }
@@ -509,5 +525,19 @@ mod tests {
         for i in starting_position.board.board_state {
             assert_eq!(i.len(), 8); // assert that length of each row = 8
         }
+    }
+    #[test]
+    fn test_rook_moves() {
+        let test_position = Game::new_from_fen("8/3P4/8/1P4P1/3r2P1/8/3pp3/8 b - - 0 1".to_string());
+        println!("{:?}", test_position);
+        println!("{:?}", Game::get_available_moves(test_position.board.clone(), test_position.board.active_player));
+        assert_eq!(true, true)
+    }
+    #[test]
+    fn test_bishop_moves() {
+        let test_position = Game::new_from_fen("8/8/2p3P1/8/4B3/3p4/8/7p w - - 0 1".to_string());
+        println!("{:?}", test_position);
+        println!("{:?}", Game::get_available_moves(test_position.board.clone(), test_position.board.active_player));
+        assert_eq!(true, true)
     }
 }
