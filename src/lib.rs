@@ -426,7 +426,7 @@ impl Game {
                     piece.is_ascii_uppercase() {
                         // WHITE pieces are represented by UPPERCASE letters
                         let coords: Vec<i32> =
-                            vec![i32::try_from(x_pos).unwrap(), i32::try_from(y_pos).unwrap()];
+                            vec![i32::try_from(y_pos).unwrap(), i32::try_from(x_pos).unwrap()];
                         let movements = get_piece_movements(&board, &coords, &piece);
                         if !movements.is_empty() {
                             output.insert(coords, movements);
@@ -535,7 +535,7 @@ mod tests {
     }
     #[test]
     fn test_bishop_moves() {
-        let test_position = Game::new_from_fen("8/8/2p3P1/8/4B3/3p4/8/7p w - - 0 1".to_string());
+        let test_position = Game::new_from_fen("8/8/8/8/8/8/8/7B w - - 0 1".to_string());
         println!("{:?}", test_position);
         println!("{:?}", Game::get_available_moves(test_position.board.clone(), test_position.board.active_player));
         assert_eq!(true, true)
