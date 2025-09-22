@@ -160,14 +160,14 @@ fn move_piece(mut board: Board, source: Vec<i32>, target: Vec<i32>) -> Board {
 //REMEMBER! x_pos = col number, y_pos = row number !!!!!!!!!!!!!!!!
 fn get_piece_movements(board: &Board, coords: &Vec<i32>, piece: &char) -> Vec<Vec<i32>> {
     let mut move_list = vec![];
-    let x_pos = coords[0];
-    let y_pos = coords[1];
+    let x_pos = coords[1];
+    let y_pos = coords[0];
     println!("Matching piece movements: {}", piece.to_ascii_lowercase());
             println!("{:?}", board);
     match piece.to_ascii_lowercase() {
         'p' => vec![], // TODO The pawn moves straight forward (y+1) if it's not a capture, moves diagonally ([x+1, y+1], [x+1, y-1]) if it's a capture,
         'b' => {
-            for coordinate_modifier in 1..min(8-x_pos, 8-y_pos) { //Iterates until the x or y coordinate reaches 7, whichever happens first
+            for coordinate_modifier in 1..min(8-y_pos, 8-x_pos) { //Iterates until the x or y coordinate reaches 7, whichever happens first
                 if board.active_player == 'w' && // breaks at friendly pieces before adding the associated coordinate to the piece's move list
                 board.board_state[(y_pos + coordinate_modifier) as usize][(x_pos + coordinate_modifier) as usize].is_ascii_uppercase() {
                     break;
@@ -375,7 +375,15 @@ fn get_piece_movements(board: &Board, coords: &Vec<i32>, piece: &char) -> Vec<Ve
 
             move_list
         }
-        'q' => vec![], // TODO the queen moves in rows and cols [+-x], [+-y], and along diagonals [+x, +y], [-x, +y], [-x, -y] and [+x, -y], until it hits a piece.
+        'q' => {
+            for i in get_piece_movements(board, coords, &'b') {
+                move_list.push(i);
+            }
+            for i in get_piece_movements(board, coords, &'r') {
+                move_list.push(i);
+            }
+        move_list
+        }, // TODO the queen moves in rows and cols [+-x], [+-y], and along diagonals [+x, +y], [-x, +y], [-x, -y] and [+x, -y], until it hits a piece.
         // TODO: Once you're finished with Bishop and Rook movement, this should be trivial. Recursive calling of get_piece_movements('b', 'r')
         'k' => vec![], // TODO the king teleports to surrounding squares. [x+-1, y+-1].
         '*' => vec![],  // the empty square can't move.
@@ -436,7 +444,7 @@ impl Game {
                     piece.is_ascii_lowercase() {
                         // black pieces are represented by lowercase letters
                         let coords: Vec<i32> =
-                            vec![i32::try_from(x_pos).unwrap(), i32::try_from(y_pos).unwrap()];
+                            vec![i32::try_from(y_pos).unwrap(), i32::try_from(x_pos).unwrap()];
                         let movements = get_piece_movements(&board, &coords, &piece);
                         if !movements.is_empty() {
                             output.insert(coords, movements);
@@ -535,7 +543,14 @@ mod tests {
     }
     #[test]
     fn test_bishop_moves() {
-        let test_position = Game::new_from_fen("8/8/8/8/8/8/8/7B w - - 0 1".to_string());
+        let test_position = Game::new_from_fen("8/8/8/8/8/8/8/6B1 w - - 0 1".to_string());
+        println!("{:?}", test_position);
+        println!("{:?}", Game::get_available_moves(test_position.board.clone(), test_position.board.active_player));
+        assert_eq!(true, true)
+    }
+    #[test]
+    fn test_queen_moves() {
+        let test_position = Game::new_from_fen("p7/5p2/3P4/1P1Q3P/4p3/1p6/3P4/8 w - - 0 1".to_string());
         println!("{:?}", test_position);
         println!("{:?}", Game::get_available_moves(test_position.board.clone(), test_position.board.active_player));
         assert_eq!(true, true)

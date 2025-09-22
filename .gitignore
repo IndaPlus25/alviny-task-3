@@ -27,3 +27,4 @@ target
 
 # ignore testing files
 test.rs
+game/
