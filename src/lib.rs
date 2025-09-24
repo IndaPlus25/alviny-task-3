@@ -170,7 +170,7 @@ fn get_piece_movements(board: &Board, coords: &Vec<i32>, piece: &char) -> Vec<Ve
     println!("Matching piece movements: {}", piece.to_ascii_lowercase());
             println!("{:?}", board);
     match piece.to_ascii_lowercase() {
-        'p' => vec![], // TODO The pawn moves straight forward (y+1) if it's not a capture, moves diagonally ([x+1, y+1], [x+1, y-1]) if it's a capture,
+        'p' => vec![], // TODO The pawn moves straight forward (y+1) if it's not a capture, moves diagonally ([x+1, y+1], [x+1, y-1]) if it's a capture, and can en passant. On its first move, it can move two squares forward (y+2).
         'b' => {
             for coordinate_modifier in 1..min(8-y_pos, 8-x_pos) { //Iterates until the x or y coordinate reaches 7, whichever happens first
                 if board.active_player == 'w' && // breaks at friendly pieces before adding the associated coordinate to the piece's move list
@@ -423,7 +423,41 @@ fn get_piece_movements(board: &Board, coords: &Vec<i32>, piece: &char) -> Vec<Ve
             }
         move_list
         }, //the queen moows and cols [+-x], [+-y], and along diagonals [+x, +y], [-x, +y], [-x, -y] and [+x, -y], until it hits a piece.
-        'k' => vec![], // TODO the king teleports to surrounding squares. [x+-1, y+-1].
+        'k' => {
+            if is_enemy_piece(board.active_player, board.board_state[(y_pos+1) as usize][(x_pos) as usize]) ||
+            (board.board_state[(y_pos+1) as usize][(x_pos) as usize] == '*')  {
+                move_list.push(vec![y_pos+1, x_pos]);
+            }
+            if is_enemy_piece(board.active_player, board.board_state[(y_pos-1) as usize][(x_pos) as usize]) ||
+            (board.board_state[(y_pos-1) as usize][(x_pos) as usize] == '*'){
+                move_list.push(vec![y_pos-1, x_pos]);
+            }
+            if is_enemy_piece(board.active_player, board.board_state[(y_pos) as usize][(x_pos+1) as usize]) ||
+            (board.board_state[(y_pos) as usize][(x_pos+1) as usize] == '*'){
+                move_list.push(vec![y_pos, x_pos+1]);
+            }
+            if is_enemy_piece(board.active_player, board.board_state[(y_pos) as usize][(x_pos-1) as usize]) ||
+            (board.board_state[(y_pos) as usize][(x_pos-1) as usize] == '*'){
+                move_list.push(vec![y_pos, x_pos-1]);
+            }
+            if is_enemy_piece(board.active_player, board.board_state[(y_pos+1) as usize][(x_pos+1) as usize]) ||
+            (board.board_state[(y_pos+1) as usize][(x_pos+1) as usize] == '*'){
+                move_list.push(vec![y_pos+1, x_pos+1]);
+            }
+            if is_enemy_piece(board.active_player, board.board_state[(y_pos+1) as usize][(x_pos-1) as usize]) ||
+            (board.board_state[(y_pos+1) as usize][(x_pos-1) as usize] == '*'){
+                move_list.push(vec![y_pos+1, x_pos-1]);
+            }
+            if is_enemy_piece(board.active_player, board.board_state[(y_pos-1) as usize][(x_pos+1) as usize]) ||
+            (board.board_state[(y_pos-1) as usize][(x_pos+1) as usize] == '*'){
+                move_list.push(vec![y_pos-1, x_pos+1]);
+            }
+            if is_enemy_piece(board.active_player, board.board_state[(y_pos-1) as usize][(x_pos-1) as usize]) ||
+            (board.board_state[(y_pos-1) as usize][(x_pos-1) as usize] == '*'){
+                move_list.push(vec![y_pos-1, x_pos-1]);
+            }
+            move_list
+        }, // TODO the king teleports to surrounding squares. [x+-1, y+-1].
         '*' => vec![],  // the empty square can't move.
         _ => panic!("By God! A non-filled square on board! PANIC!"),
     }
@@ -596,6 +630,13 @@ mod tests {
     #[test]
     fn test_knight_moves() {
         let test_position = Game::new_from_fen("8/8/8/8/4N3/8/8/8 w - - 0 1".to_string());
+        println!("{:?}", test_position);
+        println!("{:?}", Game::get_available_moves(test_position.board.clone(), test_position.board.active_player));
+        assert_eq!(true, true)
+    }
+    #[test]
+    fn test_king_moves() {
+        let test_position = Game::new_from_fen("8/8/3pR3/3K4/8/8/8/8 w - - 0 1".to_string());
         println!("{:?}", test_position);
         println!("{:?}", Game::get_available_moves(test_position.board.clone(), test_position.board.active_player));
         assert_eq!(true, true)
