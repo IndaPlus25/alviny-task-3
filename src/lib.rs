@@ -542,19 +542,17 @@ pub fn get_available_moves(
 *  BEGIN HERE                *
 *****************************/
 
-#[derive(Clone, PartialEq)] // I have no idea how to implement these traits (except for Debug), need to ask for / find walkthrough
+#[derive(Clone, PartialEq)]
 pub struct Game {
     fen: String,
     board: Board, 
-    check_w: bool,
-    check_b: bool,
+    checks: Vec<bool> // index 0 is white's check status, index 1 is black's check status
 }
 impl Game {
     pub fn new_from_fen(fen: String) -> Game {
         let board = parse_fen(&fen);
         let checks = check_for_checks(&board);
-        Game { fen, board, check_w: checks[0], check_b: checks[1]}
-        //TODO: implement check_for_checks
+        Game { fen, board, checks}
     }
     pub fn new() -> Game {
         Self::new_from_fen(
@@ -563,7 +561,7 @@ impl Game {
     }
     
 
-    pub fn make_move(&mut self, source: Vec<i32>, target: Vec<i32>) -> bool {
+    pub fn make_move(&mut self, source: Vec<i32>, target: Vec<i32>) -> bool { //Returns true if the move made is valid
         //Assuming both square and target are Board coordinates <Vec<i32>> with length 2
         let available_moves =
             get_available_moves(self.board.clone(), self.board.active_player);
@@ -582,6 +580,9 @@ impl Game {
             self.board.turn_counter += 1;
             self.board.active_player = 'w';
         }
+
+        self.checks = check_for_checks(&self.board);
+
         true
     } // TODO Make move if move is available for the active player, then switch active player, then check for checks
 }
@@ -673,7 +674,7 @@ impl fmt::Debug for Board {
 mod tests {
     use super::*;
 
-    #[test] //manual test
+    #[test]
     fn test_board_representation() {
         let starting_position = Game::new();
         println!("{:?}", starting_position);
