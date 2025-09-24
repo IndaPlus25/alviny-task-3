@@ -109,7 +109,7 @@ fn get_board_coords(algebraic_notation: String) -> Vec<i32> {
     vec![8 - col_number, row_number]
 } // Generates Board.game_state coords from algebraic notation. [0~7, 0~7]. [0, 0] corresponds to a8, and [7,7] is h1. [3,4] is e5. 
 
-fn get_algebaric_notation(coords: Vec<i32>) -> String {
+fn get_algebraic_notation(coords: Vec<i32>) -> String {
     let col_names = "abcdefgh".to_string();
     let col_name = col_names.chars().nth(coords[0] as usize).expect("Blimey! Unable to find this col!");
     format!("{}{}", col_name, coords[1])
@@ -119,42 +119,7 @@ fn get_piece(board: &Board, coords: &Vec<i32>) -> char {
     board.board_state[coords[0] as usize][coords[1] as usize]
 } // Returns the piece on a given coordinate on the board.
 
-fn set_piece(mut board: Board, coords: &Vec<i32>, piece: char) -> Board {
-    board.board_state[coords[0] as usize][coords[1] as usize] = piece;
-    return board;
-} // changes the given board coordinate to the given piece. 
 
-fn move_piece(mut board: Board, source: Vec<i32>, target: Vec<i32>) -> Board {
-    //Function assumes valid board coordinates and valid move
-    /*
-    let source_coords = get_board_coords(source);
-    let target_coords = get_board_coords(target);
-    */
-    let source_coords = source;
-    let target_coords = target; // the preceding 2 lines of code stem from laziness
-
-    let mut increment_halfmove_counter = true;
-    let piece = get_piece(&board, &source_coords); // target square isn't empty => Capture 
-    if get_piece(&board, &target_coords) != '*'
-    || // OR
-    piece.to_lowercase().to_string() == 'p'.to_string()
-    {
-        // the piece moved is a pawn
-        increment_halfmove_counter = false;
-    }
-    if increment_halfmove_counter {
-        board.halfmove_counter += 1
-    } else {
-        board.halfmove_counter = 0
-    }
-
-
-    //TODO: Actually move the piece
-    //TODO: Add the rest of the counters
-
-
-    board
-} // Moves a piece to a target square, and updates necessary counters on the board
 
 fn is_enemy_piece(active_player: char, piece: char) -> bool {
     (active_player == 'w' && piece.is_ascii_lowercase()) || (active_player == 'b' && piece.is_ascii_uppercase())
@@ -558,6 +523,16 @@ pub fn get_available_moves(
             }
         }
     }
+    if player_is_in_check(&board, color) {
+        for (key, value) in output.iter_mut() {
+            value.retain(|legal_move| -> bool { // retain all moves where x isnt in check
+                let mut test_board = board.clone();
+                test_board.move_piece(key.clone(), legal_move.to_vec());
+                !player_is_in_check(&test_board, color)
+            });
+        }
+    }
+    //TODO: If player is in check, remove the moves that doesn't put them out of check
     output
 } // For any given color, finds pieces of that color. Returns a 
 //Hashmap of coords with pieces of that color, and available moves for each coordinate.
@@ -588,16 +563,26 @@ impl Game {
     }
     
 
-    pub fn make_move(&mut self, source: Vec<i32>, target: Vec<i32>) {
+    pub fn make_move(&mut self, source: Vec<i32>, target: Vec<i32>) -> bool {
         //Assuming both square and target are Board coordinates <Vec<i32>> with length 2
         let available_moves =
             get_available_moves(self.board.clone(), self.board.active_player);
         if available_moves.contains_key(&source) &&
              available_moves[&source].contains(&target) {
                 // hopefully error free way of checking if the move is a valid move as dictated by get_available_moves()
-                self.board = move_piece(self.board.clone(), source, target);
+                self.board.move_piece(source, target);
                 self.fen = generate_fen(self.board.clone());
+        } else {
+            return false;
         }
+
+        if self.board.active_player == 'w' {
+            self.board.active_player = 'b';
+        } else if self.board.active_player == 'b' {
+            self.board.turn_counter += 1;
+            self.board.active_player = 'w';
+        }
+        true
     } // TODO Make move if move is available for the active player, then switch active player, then check for checks
 }
 impl Default for Game {
@@ -636,7 +621,38 @@ pub struct Board {
     turn_counter: u64,
     // This counter increments by one every time Black makes a move.
 }
-impl Board {}
+impl Board {
+    fn move_piece(&mut self, source: Vec<i32>, target: Vec<i32>) {
+    //Function assumes valid board coordinates and valid move
+    /*
+    let source_coords = get_board_coords(source);
+    let target_coords = get_board_coords(target);
+    */
+    let source_coords = source;
+    let target_coords = target; // the preceding 2 lines of code stem from laziness
+
+    let mut increment_halfmove_counter = true;
+    let piece = get_piece(self, &source_coords); // target square isn't empty => Capture 
+    if get_piece(self, &target_coords) != '*'
+    || // OR
+    piece.eq_ignore_ascii_case(&'p')
+    {
+        // the piece moved is a pawn
+        increment_halfmove_counter = false;
+    }
+    if increment_halfmove_counter {
+        self.halfmove_counter += 1
+    } else {
+        self.halfmove_counter = 0
+    }
+    self.set_piece(&source_coords, '*');
+    self.set_piece(&target_coords, piece);
+    //TODO: Add the rest of the counters
+} // Moves a piece to a target square.
+    fn set_piece(&mut self, coords: &Vec<i32>, piece: char) {
+        self.board_state[coords[0] as usize][coords[1] as usize] = piece;
+    } // changes the given board coordinate to the given piece. 
+}
 impl fmt::Debug for Board {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut output = "Current board (top left corner is a8)".to_string();
