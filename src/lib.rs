@@ -608,7 +608,7 @@ pub struct Board {
     active_player: char, // "w" or "b"
     castling_availability: String,
     //This value is in the power set of string "KQkq" and
-    // represents which castling moves are available.
+    // represents which castling moves are available. When no castling moves are available, the value will be "-".
     // Castling not implemented yet.
     en_passant_square: String,
     // This value represents whether or not en passant is available,
