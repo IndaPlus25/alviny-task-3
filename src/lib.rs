@@ -673,7 +673,7 @@ impl fmt::Debug for Board {
 mod tests {
     use super::*;
 
-    #[test]
+    #[test] //manual test
     fn test_board_representation() {
         let starting_position = Game::new();
         println!("{:?}", starting_position);
@@ -681,35 +681,35 @@ mod tests {
             assert_eq!(i.len(), 8); // assert that length of each row = 8
         }
     }
-    #[test]
+    #[test] //manual test
     fn test_rook_moves() {
         let test_position = Game::new_from_fen("8/3P4/8/1P4P1/3r2P1/8/3pp3/8 b - - 0 1".to_string());
         println!("{:?}", test_position);
         println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player));
         assert_eq!(true, true)
     }
-    #[test]
+    #[test] //manual test
     fn test_bishop_moves() {
         let test_position = Game::new_from_fen("8/8/8/8/8/8/8/6B1 w - - 0 1".to_string());
         println!("{:?}", test_position);
         println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player));
         assert_eq!(true, true)
     }
-    #[test]
+    #[test] //manual test
     fn test_queen_moves() {
         let test_position = Game::new_from_fen("p7/5p2/3P4/1P1Q3P/4p3/1p6/3P4/8 w - - 0 1".to_string());
         println!("{:?}", test_position);
         println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player));
         assert_eq!(true, true)
     }
-    #[test]
+    #[test] //manual test
     fn test_knight_moves() {
         let test_position = Game::new_from_fen("N6N/8/8/4N3/8/8/8/N6N w - - 0 1".to_string());
         println!("{:?}", test_position);
         println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player));
         assert_eq!(true, true)
     }
-    #[test]
+    #[test] //manual test
     fn test_king_moves() {
         let test_position = Game::new_from_fen("K6K/8/3pR3/3K4/8/8/8/K6K w - - 0 1".to_string());
         println!("{:?}", test_position);
