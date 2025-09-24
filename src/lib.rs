@@ -301,7 +301,7 @@ fn get_piece_movements(board: &Board, coords: &Vec<i32>, piece: &char) -> Vec<Ve
                 move_list.push(vec![y_pos-1, x_pos-2]);
             }
             move_list
-        }, // TODO the knight teleports to specific relative coordinates [x+-2, y+-1], [x+-1, y+-2]
+        }, // the knight teleports to specific relative coordinates [x+-2, y+-1], [x+-1, y+-2]
 
         'r' => {
             
@@ -457,7 +457,7 @@ fn get_piece_movements(board: &Board, coords: &Vec<i32>, piece: &char) -> Vec<Ve
                 move_list.push(vec![y_pos-1, x_pos-1]);
             }
             move_list
-        }, // TODO the king teleports to surrounding squares. [x+-1, y+-1].
+        }, // the king teleports to surrounding squares. [x+-1, y+-1].
         '*' => vec![],  // the empty square can't move.
         _ => panic!("By God! A non-filled square on board! PANIC!"),
     }
