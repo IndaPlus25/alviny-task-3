@@ -562,7 +562,9 @@ impl Game {
     pub fn new_from_fen(fen: String) -> Game {
         let board = parse_fen(&fen);
         let checks = check_for_checks(&board);
-        Game { fen, board, checks, game_status: 0}
+        let mut temp_game = Game { fen, board, checks, game_status: 0};
+        temp_game.update_game_status();
+        temp_game
     }
     pub fn new() -> Game {
         Self::new_from_fen(
@@ -596,17 +598,15 @@ impl Game {
 
         true
     } // TODO Make move if move is available for the active player, then switch active player, then check for checks
-    pub fn update_game_status(&mut self) {
-
+    fn update_game_status(&mut self) {
+        self.game_status = 0;
         if self.board.halfmove_counter >= 100 {
             self.game_status = 4;
         }
         //check for checkmate
-        if get_available_moves(self.board.clone(), 'w', false)
-        .keys()
-        .len() == 0 {
+        if get_available_moves(self.board.clone(), 'w', false).keys().len() == 0 {
             if self.checks[0] {
-                self.game_status = 1;
+                self.game_status = 2;
                 return;
             } else {
                 self.game_status = 3;
@@ -617,14 +617,13 @@ impl Game {
         .keys()
         .len() == 0 {
             if self.checks[1] {
-                self.game_status = 2;
+                self.game_status = 1;
                 return;
             } else {
                 self.game_status = 3;
                 return;
             }
         }
-        self.game_status = 0;
     }
     
 }
@@ -780,5 +779,15 @@ mod tests {
         let test_position = Game::new_from_fen("2k1r3/ppp2p1p/5p2/5P2/1P6/1n4P1/2R3BP/2K5 w - - 1 24".to_string());
         println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player, false));
         debug_assert_eq!(true, true)
+    }
+
+    #[test]
+    fn test_game_cases() {
+        let mut test_position = Game::new_from_fen("6k1/5p1p/8/6p1/2P1p1P1/4P2P/1r6/q1K5 w - - 8 47".to_string());
+        let mut test_position_2 = Game::new_from_fen("6k1/5p1p/8/6p1/2P1p1P1/4P2P/1r6/2K5 w - - 100 47".to_string());
+        test_position.update_game_status();
+        println!("Test position 2 halfmove counter: {}", test_position_2.board.halfmove_counter);
+        debug_assert_eq!(test_position.game_status, 2);
+        debug_assert_eq!(test_position_2.game_status, 4);
     }
 }
