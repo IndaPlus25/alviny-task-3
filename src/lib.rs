@@ -488,10 +488,6 @@ fn player_is_in_check(board: &Board, player: char) -> bool {
     false // Check if any opposing piece threatens the king, if yes, return true, else return false
 } // Returns true if the player is in check
 
-fn is_checkmate_or_stalemate(board: Board) -> bool {
-    todo!() // if is_in_check(board.active_player) && 
-}
-
 
 /*****************************
 *  PUBLIC FUNCTIONS           *
@@ -559,22 +555,22 @@ pub fn get_available_moves(
 pub struct Game {
     fen: String,
     board: Board, 
-    checks: Vec<bool> // index 0 is white's check status, index 1 is black's check status
+    checks: Vec<bool>, // index 0 is white's check status, index 1 is black's check status
+    game_status: u8, // 0: Game in progress, 1: Checkmate (White wins), 2: Checkmate (Black wins), 3: Stalemate, 4: Draw by 50 move rule 
 }
 impl Game {
     pub fn new_from_fen(fen: String) -> Game {
         let board = parse_fen(&fen);
         let checks = check_for_checks(&board);
-        Game { fen, board, checks}
+        Game { fen, board, checks, game_status: 0}
     }
     pub fn new() -> Game {
         Self::new_from_fen(
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1".to_string(),
         )
     }
-    
 
-    pub fn make_move(&mut self, source: Vec<i32>, target: Vec<i32>) -> bool { //Returns true if the move made is valid
+    pub fn make_move(&mut self, source: Vec<i32>, target: Vec<i32>) -> bool { //Returns true if a valid move has been made
         //Assuming both square and target are Board coordinates <Vec<i32>> with length 2
         let available_moves =
             get_available_moves(self.board.clone(), self.board.active_player, false);
@@ -596,8 +592,41 @@ impl Game {
 
         self.checks = check_for_checks(&self.board);
 
+        self.update_game_status();
+
         true
     } // TODO Make move if move is available for the active player, then switch active player, then check for checks
+    pub fn update_game_status(&mut self) {
+
+        if self.board.halfmove_counter >= 100 {
+            self.game_status = 4;
+        }
+        //check for checkmate
+        if get_available_moves(self.board.clone(), 'w', false)
+        .keys()
+        .len() == 0 {
+            if self.checks[0] {
+                self.game_status = 1;
+                return;
+            } else {
+                self.game_status = 3;
+                return;
+            }
+        }
+        if get_available_moves(self.board.clone(), 'b', false)
+        .keys()
+        .len() == 0 {
+            if self.checks[1] {
+                self.game_status = 2;
+                return;
+            } else {
+                self.game_status = 3;
+                return;
+            }
+        }
+        self.game_status = 0;
+    }
+    
 }
 impl Default for Game {
     fn default() -> Self {
