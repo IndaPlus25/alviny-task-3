@@ -107,7 +107,8 @@ fn get_board_coords(algebraic_notation: String) -> Vec<i32> {
 
     let col_number = i32::try_from(col_number_index).expect("Column number index too large");
 
-    let row_number = algebraic_notation.chars().nth(1).unwrap() as i32;
+    let row_number_temp = algebraic_notation.chars().nth(1).unwrap().to_digit(10).unwrap();
+    let row_number = i32::try_from(row_number_temp).ok().unwrap();
     vec![8 - row_number, col_number]
 } // Generates Board.game_state coords from algebraic notation. [0~7, 0~7]. [0, 0] corresponds to a8, and [7,7] is h1. [3,4] is e5. 
 
@@ -350,7 +351,7 @@ impl Board {
                         move_list.push(vec![y_pos-1, x_pos+1]);
                     }
                     //Pawn First Move Advance
-                    if (y_pos == 6) && self.board_state[(y_pos-2) as usize][(x_pos) as usize] == '*' {
+                    if (y_pos == 6) && self.board_state[(y_pos-2) as usize][(x_pos) as usize] == '*' && self.board_state[(y_pos-1) as usize][(x_pos) as usize] == '*'{
                         move_list.push(vec![y_pos-2, x_pos]);
                         self.en_passant_square = get_algebraic_notation(vec![y_pos-1, x_pos]);
                     }
@@ -375,7 +376,7 @@ impl Board {
                         move_list.push(vec![y_pos+1, x_pos+1]);
                     }
                     //Pawn First Move Advance
-                    if (y_pos == 1) && self.board_state[(y_pos+2) as usize][(x_pos) as usize] == '*' {
+                    if (y_pos == 1) && self.board_state[(y_pos+2) as usize][(x_pos) as usize] == '*' && self.board_state[(y_pos-1) as usize][(x_pos) as usize] == '*' {
                         move_list.push(vec![y_pos+2, x_pos]);
                         self.en_passant_square = get_algebraic_notation(vec![y_pos+1, x_pos]);
                     }
@@ -848,5 +849,20 @@ mod tests {
         println!("Test position 2 halfmove counter: {}", test_position_2.board.halfmove_counter);
         debug_assert_eq!(test_position.game_status, 2);
         debug_assert_eq!(test_position_2.game_status, 4);
+    }
+    #[test]
+    fn test_board_coord_conversion() {
+        debug_assert_eq!(get_board_coords("b3".to_string()), vec![5, 1]);
+    }
+    #[test]
+    fn test_algebraic_conversion() {
+        debug_assert_eq!(get_algebraic_notation(vec![5, 1]), "b3")
+    }
+    #[test]
+    fn test_pawn_moves() {
+        let test_position = Game::new_from_fen("8/8/8/8/8/3P1p2/1P3PP1/8 w - - 0 1".to_string());
+        println!("{:?}", test_position);
+        println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player, false));
+        assert_eq!(true, true)  
     }
 }
