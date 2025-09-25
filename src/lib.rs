@@ -9,6 +9,8 @@
 // This library uses FEN notation. Read more here:
 // https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation
 
+// This library also assumes you know how to play chess on Chess.com. 
+
 use std::collections::HashMap;
 use std::fmt::{self};
 use std::cmp::{min, max};
@@ -118,7 +120,6 @@ fn get_algebraic_notation(coords: Vec<i32>) -> String {
 fn get_piece(board: &Board, coords: &Vec<i32>) -> char {
     board.board_state[coords[0] as usize][coords[1] as usize]
 } // Returns the piece on a given coordinate on the board.
-
 
 
 fn is_enemy_piece(active_player: char, piece: char) -> bool {
@@ -476,7 +477,7 @@ fn player_is_in_check(board: &Board, player: char) -> bool {
         enemy = 'w';
     }
     // For each move in the enemy pieces, check for a threatened king. If such is the case, return true.
-    for (_key, value) in get_available_moves(board.clone(), enemy) {
+    for (_key, value) in get_available_moves(board.clone(), enemy, true) {
         for legal_move in value {
             println!("Legal move for {} at {:?}: {}", board.board_state[_key[0] as usize][_key[1] as usize], _key, board.board_state[legal_move[0] as usize][legal_move[1] as usize]);
             if board.board_state[legal_move[0] as usize][legal_move[1] as usize].eq_ignore_ascii_case(&'k') {
@@ -500,6 +501,7 @@ fn is_checkmate_or_stalemate(board: Board) -> bool {
 pub fn get_available_moves(
     board: Board,
     color: char,
+    force_no_check: bool
 ) -> HashMap<Vec<i32>, Vec<Vec<i32>>> {
     let mut output = HashMap::new();
     for (y_pos, row) in board.board_state.iter().enumerate() {
@@ -523,13 +525,24 @@ pub fn get_available_moves(
             }
         }
     }
-    if player_is_in_check(&board, color) {
-        for (key, value) in output.iter_mut() {
-            value.retain(|legal_move| -> bool { // retain all moves where x isnt in check
-                let mut test_board = board.clone();
-                test_board.move_piece(key.clone(), legal_move.to_vec());
-                !player_is_in_check(&test_board, color)
-            });
+    if !force_no_check {//DO NOT RUN THIS IF CALLED BY FN PLAYER IS IN CHECK
+        if player_is_in_check(&board, color) {
+            for (key, value) in output.iter_mut() {
+                value.retain(|legal_move| -> bool { // retain all moves where x isnt in check
+                    let mut test_board = board.clone();
+                    test_board.move_piece(key.clone(), legal_move.to_vec());
+                    !player_is_in_check(&test_board, color)
+                });
+            }
+        }
+        let mut to_remove = Vec::new();   
+        for (key, value) in &output {
+            if value.is_empty() {
+                to_remove.push(key.to_owned());
+            }
+        }
+        for key in to_remove.iter() {
+            output.remove(key);
         }
     }
     //TODO: If player is in check, remove the moves that doesn't put them out of check
@@ -564,7 +577,7 @@ impl Game {
     pub fn make_move(&mut self, source: Vec<i32>, target: Vec<i32>) -> bool { //Returns true if the move made is valid
         //Assuming both square and target are Board coordinates <Vec<i32>> with length 2
         let available_moves =
-            get_available_moves(self.board.clone(), self.board.active_player);
+            get_available_moves(self.board.clone(), self.board.active_player, false);
         if available_moves.contains_key(&source) &&
              available_moves[&source].contains(&target) {
                 // hopefully error free way of checking if the move is a valid move as dictated by get_available_moves()
@@ -686,35 +699,35 @@ mod tests {
     fn test_rook_moves() {
         let test_position = Game::new_from_fen("8/3P4/8/1P4P1/3r2P1/8/3pp3/8 b - - 0 1".to_string());
         println!("{:?}", test_position);
-        println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player));
+        println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player, false));
         assert_eq!(true, true)
     }
     #[test] //manual test
     fn test_bishop_moves() {
         let test_position = Game::new_from_fen("8/8/8/8/8/8/8/6B1 w - - 0 1".to_string());
         println!("{:?}", test_position);
-        println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player));
+        println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player, false));
         assert_eq!(true, true)
     }
     #[test] //manual test
     fn test_queen_moves() {
         let test_position = Game::new_from_fen("p7/5p2/3P4/1P1Q3P/4p3/1p6/3P4/8 w - - 0 1".to_string());
         println!("{:?}", test_position);
-        println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player));
+        println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player, false));
         assert_eq!(true, true)
     }
     #[test] //manual test
     fn test_knight_moves() {
         let test_position = Game::new_from_fen("N6N/8/8/4N3/8/8/8/N6N w - - 0 1".to_string());
         println!("{:?}", test_position);
-        println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player));
+        println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player, false));
         assert_eq!(true, true)
     }
     #[test] //manual test
     fn test_king_moves() {
         let test_position = Game::new_from_fen("K6K/8/3pR3/3K4/8/8/8/K6K w - - 0 1".to_string());
         println!("{:?}", test_position);
-        println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player));
+        println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player, false));
         assert_eq!(true, true)
     }
     #[test]
@@ -722,9 +735,9 @@ mod tests {
         let test_position_1 = Game::new();
         let test_position_2 = Game::new_from_fen("2k1r3/ppp2p1p/5p2/5P2/1P6/1n4P1/2R3BP/2K5 w - - 1 24".to_string());
         println!("{:?}", test_position_1);
-        println!("{:?}", get_available_moves(test_position_1.board.clone(), test_position_1.board.active_player));
+        println!("{:?}", get_available_moves(test_position_1.board.clone(), test_position_1.board.active_player, false));
         println!("{:?}", test_position_2);
-        println!("{:?}", get_available_moves(test_position_2.board.clone(), test_position_2.board.active_player));
+        println!("{:?}", get_available_moves(test_position_2.board.clone(), test_position_2.board.active_player, false));
         let checks1 = check_for_checks(&test_position_1.board);
         println!();
         let checks2 =  check_for_checks(&test_position_2.board);
@@ -732,5 +745,11 @@ mod tests {
         debug_assert!(!checks1[1]);
         debug_assert!(checks2[0]);
         debug_assert!(!checks2[1]);
+    }
+    #[test]
+    fn test_check_moves() {
+        let test_position = Game::new_from_fen("2k1r3/ppp2p1p/5p2/5P2/1P6/1n4P1/2R3BP/2K5 w - - 1 24".to_string());
+        println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player, false));
+        debug_assert_eq!(true, true)
     }
 }
