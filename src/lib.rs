@@ -87,6 +87,7 @@ fn generate_fen(board: Board) -> String {
         } else {
             fen = format!("{}/{}", fen, fen_row);
         }
+        fen_row = "".to_string();
     }
     format!(
         "{} {} {} {} {} {}",
@@ -145,7 +146,7 @@ fn player_is_in_check(board: &Board, player: char) -> bool {
     // For each move in the enemy pieces, check for a threatened king. If such is the case, return true.
     for (_key, value) in get_available_moves(board.clone(), enemy, true) {
         for legal_move in value {
-            println!("Legal move for {} at {:?}: {}", board.board_state[_key[0] as usize][_key[1] as usize], _key, board.board_state[legal_move[0] as usize][legal_move[1] as usize]);
+            // println!("Legal move for {} at {:?}: {}", board.board_state[_key[0] as usize][_key[1] as usize], _key, board.board_state[legal_move[0] as usize][legal_move[1] as usize]);
             if board.board_state[legal_move[0] as usize][legal_move[1] as usize].eq_ignore_ascii_case(&'k') {
                 return true;
             }
@@ -196,6 +197,30 @@ pub fn get_available_moves(
                     !player_is_in_check(&test_board, color)
                 });
             }
+            //Remove castling moves if player is in check
+            if color == 'w' {
+                if board.board_state[7][4] == 'K' {
+                    if output[&vec![7,4]].contains(&vec![7,6]) {
+                        let index = output[&vec![7,4]].iter().position(|x| *x == vec![7,6]).unwrap();
+                        output.get_mut(&vec![7,4]).unwrap().remove(index);
+                    }
+                    if output[&vec![7,4]].contains(&vec![7,2]) {
+                        let index = output[&vec![7,4]].iter().position(|x| *x == vec![7,2]).unwrap();
+                        output.get_mut(&vec![7,4]).unwrap().remove(index);
+                    }
+                }
+            } else if color == 'b' {
+                if board.board_state[0][4] == 'k' {
+                    if output[&vec![0,4]].contains(&vec![0,6]) {
+                        let index = output[&vec![0,4]].iter().position(|x| *x == vec![0,6]).unwrap();
+                        output.get_mut(&vec![0,4]).unwrap().remove(index);
+                    }
+                    if output[&vec![0,4]].contains(&vec![0,2]) {
+                        let index = output[&vec![0,4]].iter().position(|x| *x == vec![0,2]).unwrap();
+                        output.get_mut(&vec![0,4]).unwrap().remove(index);
+                    }
+                }
+            }
         }
         let mut to_remove = Vec::new();   
         for (key, value) in &output {
@@ -206,8 +231,7 @@ pub fn get_available_moves(
         for key in to_remove.iter() {
             output.remove(key);
         }
-    }
-    //TODO: If player is in check, remove the moves that doesn't put them out of check
+    } // println!("{:?}", output);
     output
 } // For any given color, finds pieces of that color. Returns a 
 //Hashmap of coords with pieces of that color, and available moves for each coordinate.
@@ -248,6 +272,7 @@ impl Game {
         if available_moves.contains_key(&source_coords) &&
              available_moves[&source_coords].contains(&target_coords) {
                 // hopefully error free way of checking if the move is a valid move as dictated by get_available_moves()
+                println!("Source coords: {:?}, Target coords: {:?}", &source_coords, &target_coords);
                 self.board.move_piece(source_coords, target_coords);
                 self.fen = generate_fen(self.board.clone());
         } else {
@@ -696,7 +721,6 @@ impl Board {
                     }
                 }
 
-
                 if x_pos + 1 < 8 {
                     if is_enemy_piece(*color, self.board_state[(y_pos) as usize][(x_pos+1) as usize]) ||
                     (self.board_state[(y_pos) as usize][(x_pos+1) as usize] == '*'){
@@ -733,6 +757,23 @@ impl Board {
                         move_list.push(vec![y_pos-1, x_pos-1]);
                     }
                 }
+                //println!("{} King's castling square 2: {}", color, self.board_state[y_pos as usize][(x_pos+2) as usize]);
+                if color == &'w' {
+                    if self.castling_availability.contains('K') && self.board_state[y_pos as usize][(x_pos+1) as usize] == '*' && self.board_state[y_pos as usize][(x_pos+2) as usize] == '*' {
+                        move_list.push(vec![y_pos, x_pos+2])
+                    }
+                    if self.castling_availability.contains('Q') && self.board_state[y_pos as usize][(x_pos-1) as usize] == '*' && self.board_state[y_pos as usize][(x_pos-2) as usize] == '*' && self.board_state[y_pos as usize][(x_pos-3) as usize] == '*' {
+                        move_list.push(vec![y_pos, x_pos-2])
+                    }
+                } else
+                if color == &'b' {
+                    if self.castling_availability.contains('k') && self.board_state[y_pos as usize][(x_pos+1) as usize] == '*' && self.board_state[y_pos as usize][(x_pos+2) as usize] == '*' {
+                        move_list.push(vec![y_pos, x_pos+2])
+                    }
+                    if self.castling_availability.contains('q') && self.board_state[y_pos as usize][(x_pos-1) as usize] == '*' && self.board_state[y_pos as usize][(x_pos-2) as usize] == '*' {
+                        move_list.push(vec![y_pos, x_pos-2])
+                    }
+                }
                 move_list
             }, // the king teleports to surrounding squares. [x+-1, y+-1].
             '*' => vec![],  // the empty square can't move.
@@ -741,58 +782,105 @@ impl Board {
     } //For a given piece on a given coordinate, return a Vec of coordinates that this piece can move to. Does not process game flag statuses.
     // giant match-case statement which returns a set of moves for each piece
     fn move_piece(&mut self, source: Vec<i32>, target: Vec<i32>) {
-    //Function assumes valid board coordinates and valid move
+        //Function assumes valid board coordinates and valid move
 
-    let source_coords = source;
-    let target_coords = target; 
-    // the preceding 2 lines of code stem from laziness
+        let source_coords = source;
+        let target_coords = target; 
+        // the preceding 2 lines of code stem from laziness
 
-    let mut increment_halfmove_counter = true;
-    let piece = get_piece(self, &source_coords);  
-    if get_piece(self, &target_coords) != '*' { // target square isn't empty => Capture
-        increment_halfmove_counter = false;
-    }
-    // OR
-    if piece.eq_ignore_ascii_case(&'p')// the piece moved is a pawn
-    {
-        increment_halfmove_counter = false;
-        //Set en passant counter if it's a first turn advance
-        if target_coords[0] == source_coords[0] + 2 {
-            self.en_passant_square = get_algebraic_notation(vec![source_coords[0]+1, source_coords[1]]);
-        }
-        if target_coords[0] == source_coords[0] - 2 {
-            self.en_passant_square = get_algebraic_notation(vec![source_coords[0]-1, source_coords[1]]);
-        }
-    } else {
-        self.en_passant_square = "-".to_string();
-    }
-    if increment_halfmove_counter {
-        self.halfmove_counter += 1
-    } else {
-        self.halfmove_counter = 0
-    }
-    self.set_piece(&source_coords, '*');
+        let mut increment_halfmove_counter = true;
+        let piece = get_piece(self, &source_coords);
 
-    if piece.eq_ignore_ascii_case(&'p') && (target_coords[0] == 0 || target_coords[0] == 7) { //Special case: Pawn promotion
-        if self.active_player == 'w' {
-            self.set_piece(&target_coords, self.promotion_selection.to_ascii_uppercase());
-        } else if self.active_player == 'b' {
-            self.set_piece(&target_coords, self.promotion_selection.to_ascii_lowercase());
+        //Castling counter updates: Rook move => that side castling is disabled
+        if piece == 'R' && source_coords[1] == 0 {
+            self.castling_availability = self.castling_availability.replace(&'Q'.to_string(), "");
+        } else if piece == 'R' && source_coords[1] == 7 {
+            self.castling_availability = self.castling_availability.replace(&'K'.to_string(), "");
+        } else if piece == 'r' && source_coords[1] == 0 {
+            self.castling_availability = self.castling_availability.replace(&'q'.to_string(), "");
+        } else if piece == 'r' && source_coords[1] == 7 {
+            self.castling_availability = self.castling_availability.replace(&'k'.to_string(), "");
         }
-    } else {
-        self.set_piece(&target_coords, piece);
-    }
-    if self.en_passant_square != "-".to_string() {
-        if target_coords == get_board_coords(self.en_passant_square.clone()) {
-            match self.active_player {
-                'w' => self.set_piece(&vec![target_coords[0]+1, target_coords[1]], '*'),
-                'b' => self.set_piece(&vec![target_coords[0]-1, target_coords[1]], '*'),
-                _ => panic!("ACTIVE PLAYER DOES NOT EXIST")
+
+        if piece == 'K' {
+            self.castling_availability = self.castling_availability.replace(&'Q'.to_string(), "");
+            self.castling_availability = self.castling_availability.replace(&'K'.to_string(), "");
+        } else if piece == 'k' {
+            self.castling_availability = self.castling_availability.replace(&'q'.to_string(), "");
+            self.castling_availability = self.castling_availability.replace(&'k'.to_string(), "");
+        }
+        if self.castling_availability.is_empty() {
+            self.castling_availability = "-".to_string();
+        }
+
+
+        if get_piece(self, &target_coords) != '*' { // target square isn't empty => Capture
+            increment_halfmove_counter = false;
+        }
+        // OR
+        if piece.eq_ignore_ascii_case(&'p')// the piece moved is a pawn
+        {
+            increment_halfmove_counter = false;
+            //Set en passant counter if it's a first turn advance
+            if target_coords[0] == source_coords[0] + 2 {
+                self.en_passant_square = get_algebraic_notation(vec![source_coords[0]+1, source_coords[1]]);
             }
-            // TODO: remove the pawn at (y-1 if active player is black) and at (y+1 if active player is white)
+            if target_coords[0] == source_coords[0] - 2 {
+                self.en_passant_square = get_algebraic_notation(vec![source_coords[0]-1, source_coords[1]]);
+            }
+        } else {
+            self.en_passant_square = "-".to_string();
         }
-    }
-} // Moves a piece to a target square.
+        if increment_halfmove_counter {
+            self.halfmove_counter += 1
+        } else {
+            self.halfmove_counter = 0
+        }
+        self.set_piece(&source_coords, '*');
+
+        if piece.eq_ignore_ascii_case(&'p') && (target_coords[0] == 0 || target_coords[0] == 7) { //Special case: Pawn promotion
+            if self.active_player == 'w' {
+                self.set_piece(&target_coords, self.promotion_selection.to_ascii_uppercase());
+            } else if self.active_player == 'b' {
+                self.set_piece(&target_coords, self.promotion_selection.to_ascii_lowercase());
+            }
+        } else {
+            self.set_piece(&target_coords, piece);
+        }
+        // Special case: En Passant
+        if self.en_passant_square != "-".to_string() {
+            if target_coords == get_board_coords(self.en_passant_square.clone()) {
+                match self.active_player {
+                    'w' => self.set_piece(&vec![target_coords[0]+1, target_coords[1]], '*'),
+                    'b' => self.set_piece(&vec![target_coords[0]-1, target_coords[1]], '*'),
+                    _ => panic!("ACTIVE PLAYER DOES NOT EXIST")
+                }
+            }
+        }
+
+        // Special case: Castling
+        if piece == 'K' && source_coords[1]-target_coords[1] == 2 {
+            self.set_piece(&target_coords, piece);
+            self.set_piece(&vec![7,0], '*');
+            self.set_piece(&vec![target_coords[0], target_coords[1]+1], 'R');
+        }
+        if piece == 'K' && source_coords[1]-target_coords[1] == -2 {
+            self.set_piece(&target_coords, piece);
+            self.set_piece(&vec![7,7], '*');
+            self.set_piece(&vec![target_coords[0], target_coords[1]-1], 'R');
+        }
+        if piece == 'k' && source_coords[1]-target_coords[1] == 2 {
+            self.set_piece(&target_coords, piece);
+            self.set_piece(&vec![0,0], '*');
+            self.set_piece(&vec![target_coords[0], target_coords[1]+1], 'R');
+        }
+        if piece == 'K' && source_coords[1]-target_coords[1] == -2 {
+            self.set_piece(&target_coords, piece);
+            self.set_piece(&vec![7,7], '*');
+            self.set_piece(&vec![target_coords[0], target_coords[1]-1], 'R');
+        }
+    } // Moves a piece to a target square.
+
     fn set_piece(&mut self, coords: &Vec<i32>, piece: char) {
         self.board_state[coords[0] as usize][coords[1] as usize] = piece;
     } // changes the given board coordinate to the given piece. 
@@ -946,5 +1034,12 @@ mod tests {
         
         println!("{:?}", test_position);
         debug_assert!(result);
+    }
+    #[test]
+    fn test_castling() {
+        let mut test_position = Game::new_from_fen("r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1".to_string());
+        println!("{:?}", test_position);
+        test_position.make_move("e1".to_string(), "c1".to_string());
+        println!("{:?}", test_position);
     }
 }
