@@ -58,6 +58,7 @@ fn parse_fen(fen: &str) -> Board {
         turn_counter: fen_vec[5]
             .parse::<u64>()
             .expect("I'm afraid it is not possible to convert this value to u64, my good sir."),
+        promotion_selection: 'q',
     }
     //Then feed the rest directly into the cosntructor
 } // Creates a Board struct from any given FEN. Inverse function to generate_fen()
@@ -221,7 +222,8 @@ pub struct Game {
     fen: String,
     board: Board, 
     checks: Vec<bool>, // index 0 is white's check status, index 1 is black's check status
-    game_status: u8, // 0: Game in progress, 1: Checkmate (White wins), 2: Checkmate (Black wins), 3: Stalemate, 4: Draw by 50 move rule 
+    game_status: u8, // 0: Game in progress, 1: Checkmate (White wins), 2: Checkmate (Black wins), 3: Stalemate, 4: Draw by 50 move rule
+    
 }
 impl Game {
     pub fn new_from_fen(fen: String) -> Game {
@@ -265,6 +267,7 @@ impl Game {
 
         true
     } // TODO Make move if move is available for the active player, then switch active player, then check for checks
+
     fn update_game_status(&mut self) {
         self.game_status = 0;
         if self.board.halfmove_counter >= 100 {
@@ -329,6 +332,8 @@ pub struct Board {
     // When it reaches 100, the game is a draw.
     turn_counter: u64,
     // This counter increments by one every time Black makes a move.
+    promotion_selection: char,
+    // Selected piece that a pawn promotes to. Defaults to q on each parse_fen call.
 }
 impl Board {
     fn get_piece_movements(&mut self, coords: &Vec<i32>, piece: &char, color: &char) -> Vec<Vec<i32>> {
@@ -767,7 +772,16 @@ impl Board {
         self.halfmove_counter = 0
     }
     self.set_piece(&source_coords, '*');
-    self.set_piece(&target_coords, piece);
+
+    if piece.eq_ignore_ascii_case(&'p') && (target_coords[0] == 0 || target_coords[0] == 7) { //Special case: Pawn promotion
+        if self.active_player == 'w' {
+            self.set_piece(&target_coords, self.promotion_selection.to_ascii_uppercase());
+        } else if self.active_player == 'b' {
+            self.set_piece(&target_coords, self.promotion_selection.to_ascii_lowercase());
+        }
+    } else {
+        self.set_piece(&target_coords, piece);
+    }
     if self.en_passant_square != "-".to_string() {
         if target_coords == get_board_coords(self.en_passant_square.clone()) {
             match self.active_player {
@@ -782,6 +796,14 @@ impl Board {
     fn set_piece(&mut self, coords: &Vec<i32>, piece: char) {
         self.board_state[coords[0] as usize][coords[1] as usize] = piece;
     } // changes the given board coordinate to the given piece. 
+
+    pub fn set_promotion(&mut self, piece: char) -> bool { //Returns true if attempting to set promotion to valid piece.
+        if ['b', 'n', 'r', 'q'].contains(&piece) {
+            self.promotion_selection = piece;
+            return true;
+        } false
+
+    }
 }
 impl fmt::Debug for Board {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -902,6 +924,27 @@ mod tests {
         
         println!("{:?}", test_position);
         println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player, false));
+        debug_assert!(result);
+    }
+    #[test]
+    fn test_promotion() {
+        let mut test_position = Game::new_from_fen("r5k1/5p1p/p7/5Rp1/2P1p3/4P1PP/1p4NK/2q5 b - - 0 33".to_string());
+        println!("{:?}", test_position);
+        println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player, false));
+        let result = test_position.make_move("b2".to_string(), "b1".to_string());
+        
+        println!("{:?}", test_position);
+        debug_assert!(result);
+    }
+    #[test]
+    fn test_underpromotion() {
+        let mut test_position = Game::new_from_fen("r5k1/5p1p/p7/5Rp1/2P1p3/4P1PP/1p4NK/2q5 b - - 0 33".to_string());
+        println!("{:?}", test_position);
+        println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player, false));
+        test_position.board.set_promotion('p');
+        let result = test_position.make_move("b2".to_string(), "b1".to_string());
+        
+        println!("{:?}", test_position);
         debug_assert!(result);
     }
 }
