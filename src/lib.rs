@@ -237,14 +237,16 @@ impl Game {
         )
     }
 
-    pub fn make_move(&mut self, source: Vec<i32>, target: Vec<i32>) -> bool { //Returns true if a valid move has been made
+    pub fn make_move(&mut self, source: String, target: String) -> bool { //Returns true if a valid move has been made
         //Assuming both square and target are Board coordinates <Vec<i32>> with length 2
+        let source_coords = get_board_coords(source);
+        let target_coords = get_board_coords(target);
         let available_moves =
             get_available_moves(self.board.clone(), self.board.active_player, false);
-        if available_moves.contains_key(&source) &&
-             available_moves[&source].contains(&target) {
+        if available_moves.contains_key(&source_coords) &&
+             available_moves[&source_coords].contains(&target_coords) {
                 // hopefully error free way of checking if the move is a valid move as dictated by get_available_moves()
-                self.board.move_piece(source, target);
+                self.board.move_piece(source_coords, target_coords);
                 self.fen = generate_fen(self.board.clone());
         } else {
             return false;
@@ -330,7 +332,7 @@ pub struct Board {
 }
 impl Board {
     fn get_piece_movements(&mut self, coords: &Vec<i32>, piece: &char, color: &char) -> Vec<Vec<i32>> {
-        self.en_passant_square = "-".to_string(); //Default case, reset en passant square
+        
         let mut move_list = vec![];
         let x_pos = coords[1];
         let y_pos = coords[0];
@@ -344,23 +346,31 @@ impl Board {
                         move_list.push(vec![y_pos-1, x_pos]);
                     }   
                     // pawns can take diagonally.
-                    if is_enemy_piece('w', self.board_state[(y_pos-1) as usize][(x_pos-1) as usize]) {
-                        move_list.push(vec![y_pos-1, x_pos-1]);
+                    if x_pos - 1 > 0 {
+                        if is_enemy_piece('w', self.board_state[(y_pos-1) as usize][(x_pos-1) as usize]) {
+                            move_list.push(vec![y_pos-1, x_pos-1]);
+                        }
                     }
-                    if is_enemy_piece('w', self.board_state[(y_pos-1) as usize][(x_pos+1) as usize]) {
-                        move_list.push(vec![y_pos-1, x_pos+1]);
+                    if x_pos + 1 < 8 {
+                        if is_enemy_piece('w', self.board_state[(y_pos-1) as usize][(x_pos+1) as usize]) {
+                            move_list.push(vec![y_pos-1, x_pos+1]);
+                        }
                     }
                     //Pawn First Move Advance
                     if (y_pos == 6) && self.board_state[(y_pos-2) as usize][(x_pos) as usize] == '*' && self.board_state[(y_pos-1) as usize][(x_pos) as usize] == '*'{
                         move_list.push(vec![y_pos-2, x_pos]);
-                        self.en_passant_square = get_algebraic_notation(vec![y_pos-1, x_pos]);
                     }
                     if self.en_passant_square != "-" { // en passant is available
-                        if (get_board_coords(self.en_passant_square.clone()) == vec![y_pos-1, x_pos-1]) {
-                            move_list.push(vec![y_pos-1, x_pos-1]);
+                        println!("En passant square found: {}", self.en_passant_square);
+                        if x_pos - 1 > 0 {
+                            if (get_board_coords(self.en_passant_square.clone()) == vec![y_pos-1, x_pos-1]) {
+                                move_list.push(vec![y_pos-1, x_pos-1]);
+                            }
                         }
-                        if (get_board_coords(self.en_passant_square.clone()) == vec![y_pos-1, x_pos+1]) {
-                            move_list.push(vec![y_pos-1, x_pos+1]);
+                        if x_pos + 1 < 8 {
+                            if (get_board_coords(self.en_passant_square.clone()) == vec![y_pos-1, x_pos+1]) {
+                                move_list.push(vec![y_pos-1, x_pos+1]);
+                            }
                         }
                     }
                 } else if color == &'b' {
@@ -369,23 +379,30 @@ impl Board {
                         move_list.push(vec![y_pos+1, x_pos]);
                     }
                     // pawns can take diagonally.
-                    if is_enemy_piece('w', self.board_state[(y_pos+1) as usize][(x_pos-1) as usize]) {
-                        move_list.push(vec![y_pos+1, x_pos-1]);
+                    if x_pos - 1 > 0 {
+                        if is_enemy_piece('w', self.board_state[(y_pos+1) as usize][(x_pos-1) as usize]) {
+                            move_list.push(vec![y_pos+1, x_pos-1]);
+                        }
                     }
-                    if is_enemy_piece('w', self.board_state[(y_pos-1) as usize][(x_pos+1) as usize]) {
-                        move_list.push(vec![y_pos+1, x_pos+1]);
+                    if x_pos + 1 < 8 {
+                        if is_enemy_piece('w', self.board_state[(y_pos-1) as usize][(x_pos+1) as usize]) {
+                            move_list.push(vec![y_pos+1, x_pos+1]);
+                        }
                     }
                     //Pawn First Move Advance
                     if (y_pos == 1) && self.board_state[(y_pos+2) as usize][(x_pos) as usize] == '*' && self.board_state[(y_pos-1) as usize][(x_pos) as usize] == '*' {
                         move_list.push(vec![y_pos+2, x_pos]);
-                        self.en_passant_square = get_algebraic_notation(vec![y_pos+1, x_pos]);
                     }
                     if self.en_passant_square != "-" { // en passant is available
-                        if (get_board_coords(self.en_passant_square.clone()) == vec![y_pos+1, x_pos-1]) {
-                            move_list.push(vec![y_pos+1, x_pos-1]);
+                        if x_pos - 1 > 0 {
+                            if (get_board_coords(self.en_passant_square.clone()) == vec![y_pos+1, x_pos-1]) {
+                                move_list.push(vec![y_pos+1, x_pos-1]);
+                            }
                         }
-                        if (get_board_coords(self.en_passant_square.clone()) == vec![y_pos+1, x_pos+1]) {
-                            move_list.push(vec![y_pos+1, x_pos+1]);
+                        if x_pos + 1 < 8 {
+                            if (get_board_coords(self.en_passant_square.clone()) == vec![y_pos+1, x_pos+1]) {
+                                move_list.push(vec![y_pos+1, x_pos+1]);
+                            }
                         }
                     }
                 }
@@ -722,16 +739,27 @@ impl Board {
     //Function assumes valid board coordinates and valid move
 
     let source_coords = source;
-    let target_coords = target; // the preceding 2 lines of code stem from laziness
+    let target_coords = target; 
+    // the preceding 2 lines of code stem from laziness
 
     let mut increment_halfmove_counter = true;
-    let piece = get_piece(self, &source_coords); // target square isn't empty => Capture 
-    if get_piece(self, &target_coords) != '*'
-    || // OR
-    piece.eq_ignore_ascii_case(&'p')
-    {
-        // the piece moved is a pawn
+    let piece = get_piece(self, &source_coords);  
+    if get_piece(self, &target_coords) != '*' { // target square isn't empty => Capture
         increment_halfmove_counter = false;
+    }
+    // OR
+    if piece.eq_ignore_ascii_case(&'p')// the piece moved is a pawn
+    {
+        increment_halfmove_counter = false;
+        //Set en passant counter if it's a first turn advance
+        if target_coords[0] == source_coords[0] + 2 {
+            self.en_passant_square = get_algebraic_notation(vec![source_coords[0]+1, source_coords[1]]);
+        }
+        if target_coords[0] == source_coords[0] - 2 {
+            self.en_passant_square = get_algebraic_notation(vec![source_coords[0]-1, source_coords[1]]);
+        }
+    } else {
+        self.en_passant_square = "-".to_string();
     }
     if increment_halfmove_counter {
         self.halfmove_counter += 1
@@ -852,7 +880,7 @@ mod tests {
     }
     #[test]
     fn test_board_coord_conversion() {
-        debug_assert_eq!(get_board_coords("b3".to_string()), vec![5, 1]);
+        debug_assert_eq!(get_board_coords("d6".to_string()), vec![2,3 ]);
     }
     #[test]
     fn test_algebraic_conversion() {
@@ -864,5 +892,16 @@ mod tests {
         println!("{:?}", test_position);
         println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player, false));
         assert_eq!(true, true)  
+    }
+    #[test]
+    fn test_en_passant() {
+        let mut test_position = Game::new_from_fen("4k3/6p1/8/pP1pP3/7P/8/8/4K3 w - d6 0 6".to_string());
+        println!("{:?}", test_position);
+        println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player, false));
+        let result = test_position.make_move("e5".to_string(), "d6".to_string());
+        
+        println!("{:?}", test_position);
+        println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player, false));
+        debug_assert!(result);
     }
 }
