@@ -3,13 +3,15 @@
 *  AUTHOR: alviny            *
 *****************************/
 
-// This library uses algebraic notation. Read more here:
-// https://en.wikipedia.org/wiki/Algebraic_notation_(chess)#Naming_the_pieces
+/*!
+All board locations in this library uses algebraic notation. Read more here:
+https://en.wikipedia.org/wiki/Algebraic_notation_(chess)#Naming_the_pieces
 
-// This library uses FEN notation. Read more here:
-// https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation
+This library (optionally) uses FEN notation. Read more here:
+https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation
 
-// This library also assumes you know how to play chess on Chess.com. 
+This library castles by moving the king 2 squares to either direction.
+*/
 
 use std::collections::HashMap;
 use std::fmt::{self};
@@ -63,11 +65,11 @@ fn parse_fen(fen: &str) -> Board {
     //Then feed the rest directly into the cosntructor
 } // Creates a Board struct from any given FEN. Inverse function to generate_fen()
 
-fn generate_fen(board: Board) -> String {
+fn generate_fen(board: &Board) -> String {
     let mut fen = String::new();
     let mut fen_row = String::new();
     let mut empty_squares: i32 = 0;
-    for row in board.board_state {
+    for row in board.board_state.clone() {
         for char in row {
             if char == '*' {
                 empty_squares += 1;
@@ -144,7 +146,7 @@ fn player_is_in_check(board: &Board, player: char) -> bool {
         enemy = 'w';
     }
     // For each move in the enemy pieces, check for a threatened king. If such is the case, return true.
-    for (_key, value) in get_available_moves(board.clone(), enemy, true) {
+    for (_key, value) in get_available_moves_internal(board.clone(), enemy, true) {
         for legal_move in value {
             // println!("Legal move for {} at {:?}: {}", board.board_state[_key[0] as usize][_key[1] as usize], _key, board.board_state[legal_move[0] as usize][legal_move[1] as usize]);
             if board.board_state[legal_move[0] as usize][legal_move[1] as usize].eq_ignore_ascii_case(&'k') {
@@ -160,12 +162,49 @@ fn player_is_in_check(board: &Board, player: char) -> bool {
 *  PUBLIC FUNCTIONS           *
 *  BEGIN HERE                *
 *****************************/
+/// A function to return available moves for a given color on a given board. 
+///
+/// ## Arguments
+/// ```
+/// mut board: Board, // The Board to look at. Usually your_game.board.
+/// color: char, // the color to return moves for. usually your_game.board.active_player. 
+/// force_no_check: bool // Whether or not to remove moves that would not take the color's king out of check.
+/// 
+/// ```
+/// ## Returns
+/// This function returns a HashMap, where
+/// key: piece location,
+/// value: each square that the piece can move to.
+///
+/// ## Example
+///
+/// ```
+/// let example_game = Game::new(); // Create a new game at the starting position
+/// let moves = get_available_moves(example_game.board, example_game.board.active_player, false)
+/// assert_eq!(moves["e2".to_string()], ["e3", "e4"]) // Available moves for the e2 pawn
+/// ```
+pub fn get_available_moves(mut board: Board,
+    color: char,
+    force_no_check: bool) -> HashMap<String, Vec<String> > {
+        let mut temp_keys: Vec<String> = vec![];
+        let mut temp_values: Vec<Vec<String>> = vec![];
+        let mut new_hashmap: HashMap<String, Vec<String> > = HashMap::new();
+        for (key, value) in get_available_moves_internal(board, color, force_no_check).iter_mut() {
+            temp_keys.push(get_algebraic_notation(key.clone()));
+            temp_values.push(value.iter().map(|x| get_algebraic_notation(x.clone()) ).collect());
+        }
+        for (index, value) in temp_keys.iter().enumerate() {
+            new_hashmap.insert(value.clone(), temp_values[index].clone());
+        }
+        new_hashmap
+    }
 
-pub fn get_available_moves(
+
+fn get_available_moves_internal (
     mut board: Board,
     color: char,
     force_no_check: bool
-) -> HashMap<Vec<i32>, Vec<Vec<i32>>> {
+) -> HashMap< Vec<i32>, Vec<Vec<i32>> > {
     let mut output = HashMap::new();
     for (y_pos, row) in board.clone().board_state.iter().enumerate() {
         for (x_pos, piece) in row.iter().enumerate() {
@@ -242,6 +281,16 @@ pub fn get_available_moves(
 *****************************/
 
 #[derive(Clone, PartialEq)]
+/// A struct to represent the chess game itself.
+///
+/// ## Attributes
+/// ```
+/// fen: String, // the FEN string that represents the current position.
+/// board: Board, // A representation of the FEN string that is easier to work with.
+/// checks: Vec<bool>, // index 0 is white's check status, index 1 is black's check status
+/// game_status: u8, // 0: Game in progress, 1: Checkmate (White wins), 2: Checkmate (Black wins), 3: Stalemate, 4: Draw by 50 move rule
+/// 
+/// ```
 pub struct Game {
     fen: String,
     board: Board, 
@@ -250,6 +299,21 @@ pub struct Game {
     
 }
 impl Game {
+    /// A function to create a new Game object from a given FEN.
+    ///
+    /// ## Arguments
+    /// ```
+    /// fen: String, // A valid FEN string.
+    /// 
+    /// ```
+    /// ## Returns
+    /// This function returns a Game object. This function will not error, but it will exhibit undocumented behaviour if the inputted FEN string is invalid.
+    ///
+    /// ## Example
+    ///
+    /// ```
+    /// let example_game = Game::new_from_fen("r1bk3r/p2pBpNp/n4n2/1p1NP2P/6P1/3P4/P1P1K3/q5b1 b - - 1 23".to_string()); // Create a new game at the final position of the Immortal Game. This Game will have status 1, since White is victorious.
+    /// ```
     pub fn new_from_fen(fen: String) -> Game {
         let board = parse_fen(&fen);
         let checks = check_for_checks(&board);
@@ -257,24 +321,56 @@ impl Game {
         temp_game.update_game_status();
         temp_game
     }
+    /// A function to create a new Game at the starting position. Alias to 
+    /// ```
+    /// Game::new_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1".to_string()
+    /// ```
+    ///
+    /// ## Returns
+    /// This function returns a valid in-progress Game object. 
+    ///
+    /// ## Example
+    ///
+    /// ```
+    /// let example_game = Game::new(); // Create a new game at the starting position
+    /// ```
     pub fn new() -> Game {
         Self::new_from_fen(
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1".to_string(),
         )
     }
-
+    /// A function to make a move in the Game. Automatically detects whose turn it is based on `Game.board`.
+    ///
+    /// ## Arguments
+    /// ```
+    /// source: String, // The square where the piece to move stands, in algebraic notation.
+    /// target: String, // The square to which to move the piece, in algebraic notation.
+    /// 
+    /// ```
+    /// ## Returns
+    /// This function returns true if the move was successfully made, false otherwist,
+    ///
+    /// ## Example
+    ///
+    /// ```
+    /// let example_game = Game::new(); // Create a new game at the starting position
+    /// example_game.make_move("f2".to_string(), "f3".to_string()); // 1. f3
+    /// example_game.make_move("e7".to_string(), "e5".to_string()); // 1... e5
+    /// example_game.make_move("g2".to_string(), "g4".to_string()); // 2. g4
+    /// example_game.make_move("d8".to_string(), "h4".to_string()); // 2... Qh4#
+    /// ```
     pub fn make_move(&mut self, source: String, target: String) -> bool { //Returns true if a valid move has been made
-        //Assuming both square and target are Board coordinates <Vec<i32>> with length 2
+        //Assuming both square and target are valid algebraic notation.
         let source_coords = get_board_coords(source);
         let target_coords = get_board_coords(target);
         let available_moves =
-            get_available_moves(self.board.clone(), self.board.active_player, false);
+            get_available_moves_internal(self.board.clone(), self.board.active_player, false);
         if available_moves.contains_key(&source_coords) &&
              available_moves[&source_coords].contains(&target_coords) {
-                // hopefully error free way of checking if the move is a valid move as dictated by get_available_moves()
+                // hopefully error free way of checking if the move is a valid move as dictated by get_available_moves_internal()
                 println!("Source coords: {:?}, Target coords: {:?}", &source_coords, &target_coords);
                 self.board.move_piece(source_coords, target_coords);
-                self.fen = generate_fen(self.board.clone());
+                //self.fen = generate_fen(self.board.clone());
         } else {
             return false;
         }
@@ -290,6 +386,8 @@ impl Game {
 
         self.update_game_status();
 
+        self.fen = generate_fen(&self.board);
+        
         true
     } // TODO Make move if move is available for the active player, then switch active player, then check for checks
 
@@ -299,7 +397,7 @@ impl Game {
             self.game_status = 4;
         }
         //check for checkmate
-        if get_available_moves(self.board.clone(), 'w', false).keys().len() == 0 {
+        if get_available_moves_internal(self.board.clone(), 'w', false).keys().len() == 0 {
             if self.checks[0] {
                 self.game_status = 2;
                 return;
@@ -308,7 +406,7 @@ impl Game {
                 return;
             }
         }
-        if get_available_moves(self.board.clone(), 'b', false)
+        if get_available_moves_internal(self.board.clone(), 'b', false)
         .keys()
         .len() == 0 {
             if self.checks[1] {
@@ -337,6 +435,33 @@ impl fmt::Debug for Game {
     }
 }
 #[derive(Clone, PartialEq)]
+/// A struct to represent the chessboard.
+///
+/// ## Attributes
+/// ```
+/// board_state: Vec<Vec<char>>,
+/// // Represents the board. Pieces are represented by their FEN notation (capital for white, lowercase for black)
+/// // Blank squares are represented by "*"
+/// active_player: char, // 'w' or 'b'. Will produce undocumented behaviour if set to anything else.
+/// 
+/// castling_availability: String,
+/// //This value is in the power set of string "KQkq" and
+/// // represents which castling moves are available. When no castling moves are available, the value will be "-".
+/// // Castling not implemented yet.
+/// en_passant_square: String,
+/// // This value represents whether or not en passant is available,
+/// // and if so, the square to which the capturing pawn will move. Otherwise,
+/// // the value will be "-".
+/// // En passant not implemented yet.
+/// halfmove_counter: i32,
+/// // This counter increments for every move made without a capture
+/// // or a pawn move. Otherwise, it resets.
+///  // When it reaches 100, the game is a draw.
+/// turn_counter: u64,
+/// // This counter increments by one every time Black makes a move.
+/// promotion_selection: char,
+/// // Selected piece that a pawn promotes to. Case-insensitive. This selection applies to both Defaults to 'q' on each parse_fen call.
+/// ```
 pub struct Board {
     board_state: Vec<Vec<char>>,
     // Represents the board. Pieces are represented by their FEN notation (capital for white, lowercase for black)
@@ -391,7 +516,6 @@ impl Board {
                         move_list.push(vec![y_pos-2, x_pos]);
                     }
                     if self.en_passant_square != "-" { // en passant is available
-                        println!("En passant square found: {}", self.en_passant_square);
                         if x_pos - 1 > 0 {
                             if (get_board_coords(self.en_passant_square.clone()) == vec![y_pos-1, x_pos-1]) {
                                 move_list.push(vec![y_pos-1, x_pos-1]);
@@ -410,17 +534,17 @@ impl Board {
                     }
                     // pawns can take diagonally.
                     if x_pos - 1 > 0 {
-                        if is_enemy_piece('w', self.board_state[(y_pos+1) as usize][(x_pos-1) as usize]) {
+                        if is_enemy_piece('b', self.board_state[(y_pos+1) as usize][(x_pos-1) as usize]) {
                             move_list.push(vec![y_pos+1, x_pos-1]);
                         }
                     }
                     if x_pos + 1 < 8 {
-                        if is_enemy_piece('w', self.board_state[(y_pos-1) as usize][(x_pos+1) as usize]) {
+                        if is_enemy_piece('b', self.board_state[(y_pos+1) as usize][(x_pos+1) as usize]) {
                             move_list.push(vec![y_pos+1, x_pos+1]);
                         }
                     }
                     //Pawn First Move Advance
-                    if (y_pos == 1) && self.board_state[(y_pos+2) as usize][(x_pos) as usize] == '*' && self.board_state[(y_pos-1) as usize][(x_pos) as usize] == '*' {
+                    if (y_pos == 1) && self.board_state[(y_pos+2) as usize][(x_pos) as usize] == '*' && self.board_state[(y_pos+1) as usize][(x_pos) as usize] == '*' {
                         move_list.push(vec![y_pos+2, x_pos]);
                     }
                     if self.en_passant_square != "-" { // en passant is available
@@ -885,8 +1009,25 @@ impl Board {
         self.board_state[coords[0] as usize][coords[1] as usize] = piece;
     } // changes the given board coordinate to the given piece. 
 
+
+    /// A function to set the piece that a pawn promotes to.
+    ///
+    /// ## Arguments
+    /// ```
+    /// piece: char // A valid FEN chess character.
+    /// 
+    /// ```
+    /// ## Returns
+    /// This function returns true if attempting to set promotion to valid piece.
+    ///
+    /// ## Example
+    ///
+    /// ```
+    /// let example_game = Game::new(); // Create a new game at the starting position
+    /// example_game.board.set_promotion('n') // When a pawn promotes, promote it to a knight.
+    /// ```
     pub fn set_promotion(&mut self, piece: char) -> bool { //Returns true if attempting to set promotion to valid piece.
-        if ['b', 'n', 'r', 'q'].contains(&piece) {
+        if ['b', 'n', 'r', 'q'].contains(&piece.to_ascii_lowercase()) {
             self.promotion_selection = piece;
             return true;
         } false
@@ -925,35 +1066,35 @@ mod tests {
     fn test_rook_moves() {
         let test_position = Game::new_from_fen("8/3P4/8/1P4P1/3r2P1/8/3pp3/8 b - - 0 1".to_string());
         println!("{:?}", test_position);
-        println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player, false));
+        println!("{:?}", get_available_moves_internal(test_position.board.clone(), test_position.board.active_player, false));
         assert_eq!(true, true)
     }
     #[test] //manual test
     fn test_bishop_moves() {
         let test_position = Game::new_from_fen("8/8/8/8/8/8/8/6B1 w - - 0 1".to_string());
         println!("{:?}", test_position);
-        println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player, false));
+        println!("{:?}", get_available_moves_internal(test_position.board.clone(), test_position.board.active_player, false));
         assert_eq!(true, true)
     }
     #[test] //manual test
     fn test_queen_moves() {
         let test_position = Game::new_from_fen("p7/5p2/3P4/1P1Q3P/4p3/1p6/3P4/8 w - - 0 1".to_string());
         println!("{:?}", test_position);
-        println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player, false));
+        println!("{:?}", get_available_moves_internal(test_position.board.clone(), test_position.board.active_player, false));
         assert_eq!(true, true)
     }
     #[test] //manual test
     fn test_knight_moves() {
         let test_position = Game::new_from_fen("N6N/8/8/4N3/8/8/8/N6N w - - 0 1".to_string());
         println!("{:?}", test_position);
-        println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player, false));
+        println!("{:?}", get_available_moves_internal(test_position.board.clone(), test_position.board.active_player, false));
         assert_eq!(true, true)
     }
     #[test] //manual test
     fn test_king_moves() {
         let test_position = Game::new_from_fen("K6K/8/3pR3/3K4/8/8/8/K6K w - - 0 1".to_string());
         println!("{:?}", test_position);
-        println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player, false));
+        println!("{:?}", get_available_moves_internal(test_position.board.clone(), test_position.board.active_player, false));
         assert_eq!(true, true)
     }
     #[test]
@@ -961,9 +1102,9 @@ mod tests {
         let test_position_1 = Game::new();
         let test_position_2 = Game::new_from_fen("2k1r3/ppp2p1p/5p2/5P2/1P6/1n4P1/2R3BP/2K5 w - - 1 24".to_string());
         println!("{:?}", test_position_1);
-        println!("{:?}", get_available_moves(test_position_1.board.clone(), test_position_1.board.active_player, false));
+        println!("{:?}", get_available_moves_internal(test_position_1.board.clone(), test_position_1.board.active_player, false));
         println!("{:?}", test_position_2);
-        println!("{:?}", get_available_moves(test_position_2.board.clone(), test_position_2.board.active_player, false));
+        println!("{:?}", get_available_moves_internal(test_position_2.board.clone(), test_position_2.board.active_player, false));
         let checks1 = check_for_checks(&test_position_1.board);
         println!();
         let checks2 =  check_for_checks(&test_position_2.board);
@@ -975,7 +1116,7 @@ mod tests {
     #[test]
     fn test_check_moves() {
         let test_position = Game::new_from_fen("2k1r3/ppp2p1p/5p2/5P2/1P6/1n4P1/2R3BP/2K5 w - - 1 24".to_string());
-        println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player, false));
+        println!("{:?}", get_available_moves_internal(test_position.board.clone(), test_position.board.active_player, false));
         debug_assert_eq!(true, true)
     }
 
@@ -998,27 +1139,27 @@ mod tests {
     }
     #[test]
     fn test_pawn_moves() {
-        let test_position = Game::new_from_fen("8/8/8/8/8/3P1p2/1P3PP1/8 w - - 0 1".to_string());
+        let test_position = Game::new_from_fen("8/4p3/8/8/8/8/8/8 b - - 0 1".to_string());
         println!("{:?}", test_position);
-        println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player, false));
+        println!("{:?}", get_available_moves_internal(test_position.board.clone(), test_position.board.active_player, false));
         assert_eq!(true, true)  
     }
     #[test]
     fn test_en_passant() {
         let mut test_position = Game::new_from_fen("4k3/6p1/8/pP1pP3/7P/8/8/4K3 w - d6 0 6".to_string());
         println!("{:?}", test_position);
-        println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player, false));
+        println!("{:?}", get_available_moves_internal(test_position.board.clone(), test_position.board.active_player, false));
         let result = test_position.make_move("e5".to_string(), "d6".to_string());
         
         println!("{:?}", test_position);
-        println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player, false));
+        println!("{:?}", get_available_moves_internal(test_position.board.clone(), test_position.board.active_player, false));
         debug_assert!(result);
     }
     #[test]
     fn test_promotion() {
         let mut test_position = Game::new_from_fen("r5k1/5p1p/p7/5Rp1/2P1p3/4P1PP/1p4NK/2q5 b - - 0 33".to_string());
         println!("{:?}", test_position);
-        println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player, false));
+        println!("{:?}", get_available_moves_internal(test_position.board.clone(), test_position.board.active_player, false));
         let result = test_position.make_move("b2".to_string(), "b1".to_string());
         
         println!("{:?}", test_position);
@@ -1028,7 +1169,7 @@ mod tests {
     fn test_underpromotion() {
         let mut test_position = Game::new_from_fen("r5k1/5p1p/p7/5Rp1/2P1p3/4P1PP/1p4NK/2q5 b - - 0 33".to_string());
         println!("{:?}", test_position);
-        println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player, false));
+        println!("{:?}", get_available_moves_internal(test_position.board.clone(), test_position.board.active_player, false));
         test_position.board.set_promotion('p');
         let result = test_position.make_move("b2".to_string(), "b1".to_string());
         
@@ -1041,5 +1182,26 @@ mod tests {
         println!("{:?}", test_position);
         test_position.make_move("e1".to_string(), "c1".to_string());
         println!("{:?}", test_position);
+    }
+    #[test]
+    fn test_2_move_mate() {
+        let mut test_game = Game::new();
+        test_game.make_move("f2".to_string(), "f3".to_string());
+        println!("{}", test_game.fen);
+        //println!("{:?}", test_game.board);
+        debug_assert_eq!(test_game.fen, "rnbqkbnr/pppppppp/8/8/8/5P2/PPPPP1PP/RNBQKBNR b KQkq - 0 1".to_string());
+        //println!("x coord: {:?}, y_coord: {:?}", get_board_coords("e7".to_string()), get_board_coords("e5".to_string()));
+        //println!("{:?}", get_available_moves_internal(test_game.board.clone(), test_game.board.active_player, false));
+        let testing = test_game.make_move("e7".to_string(), "e5".to_string());
+        println!("{}", test_game.fen);
+        //println!("{:?}", test_game.board);
+        debug_assert_eq!(test_game.fen, "rnbqkbnr/pppp1ppp/8/4p3/8/5P2/PPPPP1PP/RNBQKBNR w KQkq e6 0 2".to_string());
+        test_game.make_move("g2".to_string(), "g4".to_string());
+        println!("{}", test_game.fen);
+        debug_assert_eq!(test_game.fen, "rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq g3 0 2".to_string());
+        test_game.make_move("d8".to_string(), "h4".to_string());
+        println!("{}", test_game.fen);
+        debug_assert_eq!(test_game.fen, "rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3".to_string());
+        debug_assert_eq!(test_game.game_status, 2)
     }
 }
