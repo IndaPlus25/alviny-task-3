@@ -261,16 +261,35 @@ fn get_available_moves_internal (
                 }
             }
         }
-        let mut to_remove = Vec::new();   
-        for (key, value) in &output {
-            if value.is_empty() {
-                to_remove.push(key.to_owned());
+        
+    } 
+
+    // Remove pieces with no moves
+    let mut to_remove = Vec::new();   
+    for (key, value) in output.iter_mut() {
+        if value.is_empty() {
+            to_remove.push(key.to_owned());
+            
+        } else { // Remove moves that would put the player in check
+            if !force_no_check {
+                let mut elements_to_remove = vec![];
+                for coord in value.clone() {
+                    let mut test_board = board.clone();
+                    test_board.move_piece(key.clone(), coord.clone());
+                    if player_is_in_check(&test_board, color) {
+                        let immut_coord = coord.clone();
+                        elements_to_remove.push(immut_coord)
+                    }
+                }
+                value.retain(|x| !elements_to_remove.contains(x));
             }
         }
-        for key in to_remove.iter() {
-            output.remove(key);
-        }
-    } // println!("{:?}", output);
+    }
+    for key in to_remove.iter() {
+        output.remove(key);
+    }// println!("{:?}", output);
+
+
     output
 } // For any given color, finds pieces of that color. Returns a 
 //Hashmap of coords with pieces of that color, and available moves for each coordinate.
@@ -1119,7 +1138,12 @@ mod tests {
         println!("{:?}", get_available_moves_internal(test_position.board.clone(), test_position.board.active_player, false));
         debug_assert_eq!(true, true)
     }
-
+    #[test]
+    fn test_move_into_check() {
+        let test_position = Game::new_from_fen("8/4r3/8/8/8/3K4/8/8 w - - 0 1".to_string());
+        println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player, false));
+        debug_assert_eq!(true, true)
+    }
     #[test]
     fn test_game_cases() {
         let mut test_position = Game::new_from_fen("6k1/5p1p/8/6p1/2P1p1P1/4P2P/1r6/q1K5 w - - 8 47".to_string());
