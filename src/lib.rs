@@ -260,6 +260,53 @@ fn get_available_moves_internal (
                     }
                 }
             }
+
+        }
+        // Prevent castling through check
+        let mut test_board = board.clone();
+
+        if color == 'w' {
+            if board.board_state[7][4] == 'K' {
+                if output.contains_key(&vec![7,4]) {
+                    if output[&vec![7,4]].contains(&vec![7,6]) {
+                        test_board.move_piece(vec![7,4], vec![7,5]);
+                        if player_is_in_check(&test_board, color) {
+                            let index = output[&vec![7,4]].iter().position(|x| *x == vec![7,6]).unwrap();
+                            output.get_mut(&vec![7,4]).unwrap().remove(index);
+                        }
+                        test_board = board.clone();
+                    }
+                    if output[&vec![7,4]].contains(&vec![7,2]) {
+                        test_board.move_piece(vec![7,4], vec![7,2]);
+                        if player_is_in_check(&test_board, color) {
+                            let index = output[&vec![7,4]].iter().position(|x| *x == vec![7,2]).unwrap();
+                            output.get_mut(&vec![7,4]).unwrap().remove(index);
+                        }
+                        test_board = board.clone();
+                    }
+                }
+            }
+        } else if color == 'b' {
+            if board.board_state[0][4] == 'k' {
+                if output.contains_key(&vec![0,4]) {
+                    if output[&vec![0,4]].contains(&vec![0,6]) {
+                        test_board.move_piece(vec![0,4], vec![0,5]);
+                        if player_is_in_check(&test_board, color) {
+                            let index = output[&vec![0,4]].iter().position(|x| *x == vec![0,6]).unwrap();
+                            output.get_mut(&vec![0,4]).unwrap().remove(index);
+                        }
+                        test_board = board.clone();
+                    }
+                    if output[&vec![0,4]].contains(&vec![0,2]) {
+                        test_board.move_piece(vec![0,4], vec![0,3]);
+                        if player_is_in_check(&test_board, color) {
+                            let index = output[&vec![0,4]].iter().position(|x| *x == vec![0,2]).unwrap();
+                            output.get_mut(&vec![0,4]).unwrap().remove(index);
+                        }
+                        test_board = board.clone();
+                    }
+                }
+            }
         }
         
     } 
@@ -271,7 +318,7 @@ fn get_available_moves_internal (
             to_remove.push(key.to_owned());
             
         } else { // Remove moves that would put the player in check
-            if !force_no_check {
+            if !force_no_check { //The function ignores this if it's told to pretend check doesn't exist.
                 let mut elements_to_remove = vec![];
                 for coord in value.clone() {
                     let mut test_board = board.clone();
@@ -1227,5 +1274,10 @@ mod tests {
         println!("{}", test_game.fen);
         debug_assert_eq!(test_game.fen, "rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3".to_string());
         debug_assert_eq!(test_game.game_status, 2)
+    }
+    #[test]
+    fn test_castling_through_check() {
+        let mut test_position = Game::new_from_fen("1nbqkbn1/pppppppp/8/8/3r1r2/8/PPP1P1PP/R3K2R w KQ - 0 1".to_string());
+        println!("{:?}", get_available_moves(test_position.board.clone(), test_position.board.active_player, false));
     }
 }
