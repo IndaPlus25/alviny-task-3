@@ -5,10 +5,10 @@
 
 /*!
 All board locations in this library uses algebraic notation. Read more here:
-https://en.wikipedia.org/wiki/Algebraic_notation_(chess)#Naming_the_pieces
+<https://en.wikipedia.org/wiki/Algebraic_notation_(chess)#Naming_the_pieces>
 
 This library (optionally) uses FEN notation. Read more here:
-https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation
+<https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation>
 
 This library castles by moving the king 2 squares to either direction.
 */
@@ -389,7 +389,7 @@ impl Game {
     }
     /// A function to create a new Game at the starting position. Alias to 
     /// ```
-    /// Game::new_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1".to_string()
+    /// Game::new_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1".to_string())
     /// ```
     ///
     /// ## Returns
@@ -526,7 +526,7 @@ impl fmt::Debug for Game {
 /// turn_counter: u64,
 /// // This counter increments by one every time Black makes a move.
 /// promotion_selection: char,
-/// // Selected piece that a pawn promotes to. Case-insensitive. This selection applies to both Defaults to 'q' on each parse_fen call.
+/// // Selected piece that a pawn promotes to. Case-insensitive. This selection applies to both white and black. Defaults to 'q' on each parse_fen call.
 /// ```
 pub struct Board {
     pub board_state: Vec<Vec<char>>,
@@ -896,7 +896,7 @@ impl Board {
                     move_list.push(i);
                 }
             move_list
-            }, //the queen moows and cols [+-x], [+-y], and along diagonals [+x, +y], [-x, +y], [-x, -y] and [+x, -y], until it hits a piece.
+            }, //the queen moves in rows and cols [+-x], [+-y], and along diagonals [+x, +y], [-x, +y], [-x, -y] and [+x, -y], until it hits a piece.
             'k' => {
                 if y_pos + 1 < 8 {
                     if is_enemy_piece(*color, self.board_state[(y_pos+1) as usize][(x_pos) as usize]) ||
@@ -1097,7 +1097,6 @@ impl Board {
             self.promotion_selection = piece;
             return true;
         } false
-
     }
 }
 impl fmt::Debug for Board {
