@@ -358,10 +358,10 @@ fn get_available_moves_internal (
 /// 
 /// ```
 pub struct Game {
-    fen: String,
-    board: Board, 
-    checks: Vec<bool>, // index 0 is white's check status, index 1 is black's check status
-    game_status: u8, // 0: Game in progress, 1: Checkmate (White wins), 2: Checkmate (Black wins), 3: Stalemate, 4: Draw by 50 move rule
+    pub fen: String,
+    pub board: Board, 
+    pub checks: Vec<bool>, // index 0 is white's check status, index 1 is black's check status
+    pub game_status: u8, // 0: Game in progress, 1: Checkmate (White wins), 2: Checkmate (Black wins), 3: Stalemate, 4: Draw by 50 move rule
     
 }
 impl Game {
@@ -529,26 +529,26 @@ impl fmt::Debug for Game {
 /// // Selected piece that a pawn promotes to. Case-insensitive. This selection applies to both Defaults to 'q' on each parse_fen call.
 /// ```
 pub struct Board {
-    board_state: Vec<Vec<char>>,
+    pub board_state: Vec<Vec<char>>,
     // Represents the board. Pieces are represented by their FEN notation (capital for white, lowercase for black)
     // Blank squares are represented by "*"
-    active_player: char, // "w" or "b"
-    castling_availability: String,
+    pub active_player: char, // "w" or "b"
+    pub castling_availability: String,
     //This value is in the power set of string "KQkq" and
     // represents which castling moves are available. When no castling moves are available, the value will be "-".
     // Castling not implemented yet.
-    en_passant_square: String,
+    pub en_passant_square: String,
     // This value represents whether or not en passant is available,
     // and if so, the square to which the capturing pawn will move. Otherwise,
     // the value will be "-".
     // En passant not implemented yet.
-    halfmove_counter: i32,
+    pub halfmove_counter: i32,
     // This counter increments for every move made without a capture
     // or a pawn move. Otherwise, it resets.
     // When it reaches 100, the game is a draw.
-    turn_counter: u64,
+    pub turn_counter: u64,
     // This counter increments by one every time Black makes a move.
-    promotion_selection: char,
+    pub promotion_selection: char,
     // Selected piece that a pawn promotes to. Defaults to q on each parse_fen call.
 }
 impl Board {
