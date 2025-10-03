@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["get_available_moves"],"struct":["Board","Game"]};
+window.SIDEBAR_ITEMS = {"fn":["generate_fen","get_available_moves","parse_fen"],"struct":["Board","Game"]};

@@ -21,8 +21,23 @@ use std::cmp::{min, max};
 *   PRIVATE HELPER FUNCTIONS *
 *   BEGIN HERE               *
 *****************************/
-
-fn parse_fen(fen: &str) -> Board {
+/// A function to parse a FEN string into a Board struct. Inverse function for generate_fen().
+///
+/// ## Arguments
+/// ```
+/// fen: &str // A valid FEN string in standard format
+/// 
+/// ```
+/// ## Returns
+/// This function returns a Board struct (see docs for Board).
+/// 
+/// ## Example
+///
+/// ```
+/// let example_board = parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+/// example_board = parse_fen("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1")
+/// ```
+pub fn parse_fen(fen: &str) -> Board {
     let fen_vec = fen.split(' ').collect::<Vec<&str>>();
     //Split the FEN into its constituent parts
 
@@ -65,7 +80,23 @@ fn parse_fen(fen: &str) -> Board {
     //Then feed the rest directly into the cosntructor
 } // Creates a Board struct from any given FEN. Inverse function to generate_fen()
 
-fn generate_fen(board: &Board) -> String {
+/// A function to parse a Board struct into an FEN. Inverse function for parse_fen().
+///
+/// ## Arguments
+/// ```
+/// board: &Board // A valid FEN string in standard format
+/// 
+/// ```
+/// ## Returns
+/// This function returns a FEN String (<String>). 
+/// 
+/// ## Example
+///
+/// ```
+/// let example_board = parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+/// let example_fen = generate_fen(example_board)
+/// ```
+pub fn generate_fen(board: &Board) -> String {
     let mut fen = String::new();
     let mut fen_row = String::new();
     let mut empty_squares: i32 = 0;
